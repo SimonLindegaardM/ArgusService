@@ -1,0 +1,6 @@
+@ArgusService_HostAddress = http://localhost:5122
+
+GET {{ArgusService_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
