@@ -15,13 +15,11 @@ namespace ArgusService.Managers
 
         public async Task RegisterLockToTrackerAsync(string lockId, string trackerId)
         {
-            // Validate input
             if (string.IsNullOrEmpty(lockId) || string.IsNullOrEmpty(trackerId))
             {
                 throw new ArgumentException("Lock ID and Tracker ID cannot be null or empty.");
             }
 
-            // Register the lock
             await _lockRepository.RegisterLockAsync(lockId, trackerId);
         }
 

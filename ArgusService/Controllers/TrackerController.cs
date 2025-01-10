@@ -104,7 +104,7 @@ namespace ArgusService.Controllers
     {
         public string DeviceId { get; set; }
         public string DeviceType { get; set; }
-        public string AttachedTrackerId { get; set; } // Optional for locks
+        public string AttachedTrackerId { get; set; }
     }
 
     public class LinkDeviceRequest

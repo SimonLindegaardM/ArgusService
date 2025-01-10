@@ -35,7 +35,7 @@ namespace ArgusService_UnitTest
         [DataRow(nameof(LongValidFirebaseUIDminus1))] // Upper valid limit minus 1
         public void Should_Accept_ValidFirebaseUID(string firebaseUID)
         {
-            // Arrange & Act
+            // Arrange
             var user = new User { FirebaseUID = firebaseUID };
 
             // Assert

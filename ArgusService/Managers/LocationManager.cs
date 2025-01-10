@@ -52,14 +52,12 @@ namespace ArgusService.Managers
 
             if (format.ToLower() == "csv")
             {
-                // Generate CSV data
                 var csvData = "Latitude,Longitude,Timestamp\n" +
                               string.Join("\n", locations.Select(l => $"{l.Latitude},{l.Longitude},{l.Timestamp:O}"));
                 return System.Text.Encoding.UTF8.GetBytes(csvData);
             }
             else if (format.ToLower() == "pdf")
             {
-                // Generate PDF data (requires a PDF library like iTextSharp or PdfSharp)
                 throw new NotImplementedException("PDF export is not yet implemented.");
             }
             else

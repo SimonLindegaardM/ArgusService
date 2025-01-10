@@ -19,13 +19,11 @@ namespace ArgusService.Managers
         /// </summary>
         public async Task RegisterDeviceAsync(string deviceId, string deviceType, string attachedTrackerId = null)
         {
-            // Validate device type
             if (deviceType.ToLower() != "tracker" && deviceType.ToLower() != "lock")
             {
                 throw new ArgumentException("Invalid device type. Allowed types are 'tracker' or 'lock'.");
             }
 
-            // Register the device
             await _trackerRepository.RegisterDeviceAsync(deviceId, deviceType, attachedTrackerId);
         }
 
@@ -42,7 +40,7 @@ namespace ArgusService.Managers
             }
 
             // Fetch the tracker and link it
-            var tracker = await _trackerRepository.FetchTrackerAsync(trackerId); // Add this method in ITrackerRepository
+            var tracker = await _trackerRepository.FetchTrackerAsync(trackerId); 
             if (tracker == null)
             {
                 throw new Exception($"Tracker with ID {trackerId} not found.");
@@ -50,7 +48,7 @@ namespace ArgusService.Managers
 
             tracker.FirebaseUID = firebaseUID;
             tracker.Email = email;
-            await _trackerRepository.UpdateTrackerAsync(tracker); // Add this method in ITrackerRepository
+            await _trackerRepository.UpdateTrackerAsync(tracker);
         }
 
         /// <summary>
@@ -66,13 +64,11 @@ namespace ArgusService.Managers
         /// </summary>
         public async Task UpdateLockStateAsync(string trackerId, string lockState)
         {
-            // Validate lock state
             if (lockState.ToLower() != "locked" && lockState.ToLower() != "unlocked")
             {
                 throw new ArgumentException("Invalid lock state. Allowed states are 'locked' or 'unlocked'.");
             }
 
-            // Update the lock state
             await _trackerRepository.UpdateLockStateAsync(trackerId, lockState);
         }
 
