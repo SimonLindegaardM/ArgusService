@@ -4,19 +4,29 @@ using ArgusService.Repositories;
 using System;
 using ArgusService.Interfaces;
 using ArgusService.Managers;
+
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.OpenApi.Models;
+using DotNetEnv;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Load environment variables from the .env file
+DotNetEnv.Env.Load();
 
+// Retrieve the database connection string from the .env file
+string connectionString = Environment.GetEnvironmentVariable("MY_DB_CONNECTION");
+
+// Update the configuration with the connection string
+builder.Configuration["ConnectionStrings:MyLocalDbConnection"] = connectionString;
+
+// Add services to the container.
 builder.Services.AddControllers();
 
 builder.Services.AddDbContext<MyDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("SqlServer")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("MyLocalDbConnection")));
 
 builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<UserManager>();
@@ -67,7 +77,6 @@ builder.Services.AddAuthorization();
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-//builder.Services.AddSwaggerGen();
 
 builder.Services.AddSwaggerGen(c =>
 {
