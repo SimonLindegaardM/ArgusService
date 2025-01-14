@@ -1,5 +1,6 @@
 ﻿using ArgusService.Interfaces;
 using ArgusService.Managers;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -20,6 +21,7 @@ namespace ArgusService.Controllers
         /// Assigns a role to a user (admin-only).
         /// </summary>
         [HttpPost("assign-role")]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> AssignRole([FromBody] AssignRoleRequest request)
         {
             if (!User.IsInRole("admin"))
@@ -62,6 +64,7 @@ namespace ArgusService.Controllers
         /// Fetches users based on their role (admin-only).
         /// </summary>
         [HttpGet("by-role/{role}")]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> GetUsersByRole(string role)
         {
             if (!User.IsInRole("admin"))
@@ -71,7 +74,7 @@ namespace ArgusService.Controllers
 
             try
             {
-                var users = await _userManager.GetUsersByRoleAsync(role); // Ensure this method exists in the UserManager
+                var users = await _userManager.GetUsersByRoleAsync(role);
                 return Ok(users);
             }
             catch (Exception ex)
