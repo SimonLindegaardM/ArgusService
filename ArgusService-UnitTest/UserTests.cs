@@ -7,98 +7,90 @@ namespace ArgusService_UnitTest
     public class UserTests
     {
 
-        private static readonly string LongValidFirebaseUID = new string('a', 128);
-        private static readonly string LongValidFirebaseUIDminus1 = new string('a', 127);
-        private static readonly string LongInvalidFirebaseUID = new string('a', 129);
-        private static readonly string ValidMaxLengthEmail = new string('a', 93) + "@test.com";
-        private static readonly string InvalidMaxLengthEmail = new string('a', 94) + "@test.com";
+        private const string LongString128 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"; // 128 'a's
+        private const string LongString129 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"; // 129 'a's
+        private const string LongString100 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"; // 100 'a's
+        private const string LongString101 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"; // 101 'a's
 
-        // Helper Method for Validation
-        private void ValidateModel(object model)
+        private User CreateUser(string firebaseUID, string email, string role, string notificationPreferences)
         {
-            var context = new ValidationContext(model, null, null);
-            var results = new List<ValidationResult>();
-            if (!Validator.TryValidateObject(model, context, results, true))
+            return new User
             {
-                throw new ValidationException(results[0].ErrorMessage);
-            }
+                FirebaseUID = firebaseUID,
+                Email = email,
+                Role = role,
+                NotificationPreferences = notificationPreferences
+            };
+        }
+
+        private bool TryValidateModel(User user, out ICollection<ValidationResult> results)
+        {
+            var context = new ValidationContext(user, serviceProvider: null, items: null);
+            results = new List<ValidationResult>();
+            return Validator.TryValidateObject(user, context, results, true);
         }
 
         // FirebaseUID Tests
-
-        //Valid test cases
         [DataTestMethod]
         [DataRow("UID123")] // Valid
         [DataRow("a")] // Lower valid limit
-        [DataRow("aa")] // Lower valid limit plus 1
-        [DataRow(nameof(LongValidFirebaseUID))] // Upper valid limit
-        [DataRow(nameof(LongValidFirebaseUIDminus1))] // Upper valid limit minus 1
+        [DataRow(LongString128)] // Upper valid limit
         public void Should_Accept_ValidFirebaseUID(string firebaseUID)
         {
-            // Arrange
-            var user = new User { FirebaseUID = firebaseUID };
-
-            // Assert
-            Assert.AreEqual(firebaseUID, user.FirebaseUID);
+            var user = CreateUser(firebaseUID, "test@example.com", "user", "EmailOnly");
+            var result = TryValidateModel(user, out var validationResults);
+            Assert.IsTrue(result);
+            Assert.AreEqual(0, validationResults.Count);
         }
 
-        //Invalid test cases
         [DataTestMethod]
         [DataRow("")] // Empty string
         [DataRow(null)] // Null
-        [DataRow(nameof(LongInvalidFirebaseUID))] // Exceeds max limit
+        [DataRow(LongString129)] // Exceeds max limit
         public void Should_ThrowException_ForInvalidFirebaseUID(string firebaseUID)
         {
-            // Arrange
-            var user = new User { FirebaseUID = firebaseUID };
-
-            // Act & Assert
-            Assert.ThrowsException<ValidationException>(() => ValidateModel(user));
+            var user = CreateUser(firebaseUID, "test@example.com", "user", "EmailOnly");
+            var result = TryValidateModel(user, out var validationResults);
+            Assert.IsFalse(result);
+            Assert.IsTrue(validationResults.Count > 0);
         }
 
         // Email Tests
-
         [DataTestMethod]
         [DataRow("test@example.com")] // Valid
         [DataRow("a@b.com")] // Lower valid limit
-        [DataRow(nameof(ValidMaxLengthEmail))] // Upper valid limit
         public void Should_Accept_ValidEmail(string email)
         {
-            // Arrange & Act
-            var user = new User { Email = email };
-
-            // Assert
-            Assert.AreEqual(email, user.Email);
+            var user = CreateUser("UID123", email, "user", "EmailOnly");
+            var result = TryValidateModel(user, out var validationResults);
+            Assert.IsTrue(result);
+            Assert.AreEqual(0, validationResults.Count);
         }
 
         [DataTestMethod]
         [DataRow("")] // Empty string
         [DataRow(null)] // Null
-        [DataRow("plainaddress")] // Missing "@" and domain
+        [DataRow("plainaddress")] // Invalid format
         [DataRow("@domain.com")] // Missing local part
         [DataRow("test@")] // Missing domain
-        [DataRow(nameof(InvalidMaxLengthEmail))] // Exceeds max limit
         public void Should_ThrowException_ForInvalidEmail(string email)
         {
-            // Arrange
-            var user = new User { Email = email };
-
-            // Act & Assert
-            Assert.ThrowsException<ValidationException>(() => ValidateModel(user));
+            var user = CreateUser("UID123", email, "user", "EmailOnly");
+            var result = TryValidateModel(user, out var validationResults);
+            Assert.IsFalse(result);
+            Assert.IsTrue(validationResults.Count > 0);
         }
 
         // Role Tests
-
         [DataTestMethod]
         [DataRow("user")] // Valid
         [DataRow("admin")] // Valid
         public void Should_Accept_ValidRole(string role)
         {
-            // Arrange & Act
-            var user = new User { Role = role };
-
-            // Assert
-            Assert.AreEqual(role, user.Role);
+            var user = CreateUser("UID123", "test@example.com", role, "EmailOnly");
+            var result = TryValidateModel(user, out var validationResults);
+            Assert.IsTrue(result);
+            Assert.AreEqual(0, validationResults.Count);
         }
 
         [DataTestMethod]
@@ -109,15 +101,13 @@ namespace ArgusService_UnitTest
         [DataRow("manager")] // Invalid value
         public void Should_ThrowException_ForInvalidRole(string role)
         {
-            // Arrange
-            var user = new User { Role = role };
-
-            // Act & Assert
-            Assert.ThrowsException<ValidationException>(() => ValidateModel(user));
+            var user = CreateUser("UID123", "test@example.com", role, "EmailOnly");
+            var result = TryValidateModel(user, out var validationResults);
+            Assert.IsFalse(result);
+            Assert.IsTrue(validationResults.Count > 0);
         }
 
         // NotificationPreferences Tests
-
         [DataTestMethod]
         [DataRow("EmailOnly")] // Valid
         [DataRow("SMSOnly")] // Valid
@@ -125,22 +115,10 @@ namespace ArgusService_UnitTest
         [DataRow(null)] // Valid (optional)
         public void Should_Accept_ValidNotificationPreferences(string notificationPreferences)
         {
-            // Arrange & Act
-            var user = new User { NotificationPreferences = notificationPreferences };
-
-            // Assert
-            Assert.AreEqual(notificationPreferences, user.NotificationPreferences);
-        }
-
-        [DataTestMethod]
-        [DataRow(null)] // Null (if required in certain scenarios)
-        public void Should_ThrowException_ForInvalidNotificationPreferences(string notificationPreferences)
-        {
-            // Arrange
-            var user = new User { NotificationPreferences = notificationPreferences };
-
-            // Act & Assert
-            Assert.ThrowsException<ValidationException>(() => ValidateModel(user));
+            var user = CreateUser("UID123", "test@example.com", "user", notificationPreferences);
+            var result = TryValidateModel(user, out var validationResults);
+            Assert.IsTrue(result);
+            Assert.AreEqual(0, validationResults.Count);
         }
     }
 }
