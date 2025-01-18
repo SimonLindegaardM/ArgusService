@@ -5,7 +5,7 @@ VisualStudioVersion = 17.10.35201.131
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ArgusService", "ArgusService\ArgusService.csproj", "{57E872EB-4433-4385-A05D-3DA4F56969C0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArgusService-UnitTest", "ArgusService-UnitTest\ArgusService-UnitTest.csproj", "{28EBFCFD-832D-4EFB-A438-BB08A83FB4F9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ArgusService-UnitTest", "ArgusService-UnitTest\ArgusService-UnitTest.csproj", "{28EBFCFD-832D-4EFB-A438-BB08A83FB4F9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

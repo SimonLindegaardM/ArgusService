@@ -33,7 +33,7 @@ namespace ArgusService_UnitTest
         // FirebaseUID Tests
         [DataTestMethod]
         [DataRow("UID123")] // Valid
-        [DataRow("a")] // Lower valid limit
+        [DataRow("")] // Lower valid limit
         [DataRow(LongString128)] // Upper valid limit
         public void Should_Accept_ValidFirebaseUID(string firebaseUID)
         {
