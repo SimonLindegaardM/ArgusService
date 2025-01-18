@@ -6,6 +6,8 @@ using ArgusService.DTOs;
 using ArgusService.Interfaces;   // INotificationRepository interface
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
+using AutoMapper; // Add this
+using ArgusService.Models; // Ensure this is included for the Notification model
 
 namespace ArgusService.Controllers
 {
@@ -15,11 +17,13 @@ namespace ArgusService.Controllers
     {
         private readonly INotificationRepository _notificationRepository;
         private readonly ILogger<NotificationsController> _logger;
+        private readonly IMapper _mapper; // Inject IMapper
 
-        public NotificationsController(INotificationRepository notificationRepository, ILogger<NotificationsController> logger)
+        public NotificationsController(INotificationRepository notificationRepository, ILogger<NotificationsController> logger, IMapper mapper)
         {
             _notificationRepository = notificationRepository;
             _logger = logger;
+            _mapper = mapper; // Assign IMapper
         }
 
         /// <summary>
@@ -44,7 +48,10 @@ namespace ArgusService.Controllers
 
             try
             {
-                await _notificationRepository.AddNotificationAsync(dto);
+                // Map DTO to Model
+                var notification = _mapper.Map<Notification>(dto);
+
+                await _notificationRepository.AddNotificationAsync(notification);
                 _logger.LogInformation("Notification added for Tracker '{TrackerId}'.", dto.TrackerId);
                 return Ok(new { Message = "Notification added successfully." });
             }
@@ -76,7 +83,8 @@ namespace ArgusService.Controllers
 
             try
             {
-                var notifications = await _notificationRepository.FetchNotificationsAsync(userId);
+                // Assuming the correct method name is GetNotificationsByUserIdAsync
+                var notifications = await _notificationRepository.GetNotificationsByUserIdAsync(userId);
                 _logger.LogInformation("Fetched notifications for User '{UserId}'.", userId);
                 return Ok(notifications);
             }

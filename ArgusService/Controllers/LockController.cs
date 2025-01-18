@@ -6,6 +6,8 @@ using ArgusService.DTOs;
 using ArgusService.Interfaces;   // ILockManager interface
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
+using AutoMapper; // Add this
+using ArgusService.Models; // Ensure this is included for the Lock model
 
 namespace ArgusService.Controllers
 {
@@ -15,11 +17,13 @@ namespace ArgusService.Controllers
     {
         private readonly ILockManager _lockManager;
         private readonly ILogger<LockController> _logger;
+        private readonly IMapper _mapper; // Inject IMapper
 
-        public LockController(ILockManager lockManager, ILogger<LockController> logger)
+        public LockController(ILockManager lockManager, ILogger<LockController> logger, IMapper mapper)
         {
             _lockManager = lockManager;
             _logger = logger;
+            _mapper = mapper; // Assign IMapper
         }
 
         /// <summary>
@@ -42,8 +46,11 @@ namespace ArgusService.Controllers
 
             try
             {
-                await _lockManager.RegisterLockToTrackerAsync(request.LockId, request.TrackerId);
-                _logger.LogInformation("Lock '{LockId}' registered to Tracker '{TrackerId}'.", request.LockId, request.TrackerId);
+                // Map DTO to Model
+                var lockEntity = _mapper.Map<Lock>(request);
+
+                await _lockManager.RegisterLockToTrackerAsync(lockEntity.LockId, lockEntity.TrackerId);
+                _logger.LogInformation("Lock '{LockId}' registered to Tracker '{TrackerId}'.", lockEntity.LockId, lockEntity.TrackerId);
                 return Ok(new { Message = "Lock registered successfully." });
             }
             catch (Exception ex)
@@ -58,7 +65,7 @@ namespace ArgusService.Controllers
         /// GET /api/locks/trackers/{trackerId}/locks
         /// </summary>
         [HttpGet("trackers/{trackerId}/locks")]
-        /// [Authorize(Roles = "admin,user")]
+        //[Authorize(Roles = "admin,user")] // Uncomment if needed
         public async Task<IActionResult> GetLocksByTrackerId(string trackerId)
         {
             if (string.IsNullOrEmpty(trackerId))
@@ -86,7 +93,7 @@ namespace ArgusService.Controllers
         /// { "lockState": "locked" }
         /// </summary>
         [HttpPost("{lockId}/lock-state")]
-        ///[Authorize(Roles = "admin,user")]
+        [Authorize(Roles = "admin,user")]
         public async Task<IActionResult> UpdateLockState(string lockId, [FromBody] UpdateLockLockStateRequestDto request)
         {
             if (!ModelState.IsValid)
@@ -158,7 +165,7 @@ namespace ArgusService.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error fetching details for Lock '{LockId}'.", lockId);
-                return BadRequest(new { Message = ex.Message });
+                return StatusCode(500, new { Message = "An unexpected error occurred." });
             }
         }
     }

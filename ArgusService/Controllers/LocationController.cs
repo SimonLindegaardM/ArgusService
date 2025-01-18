@@ -3,9 +3,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ArgusService.DTOs;
-using ArgusService.Interfaces;   // ILocationRepository interface
+using ArgusService.Interfaces;   // ILocationManager interface
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
+using AutoMapper; // Add this
+using ArgusService.Models; // Ensure this is included for the Location model
 
 namespace ArgusService.Controllers
 {
@@ -13,13 +15,15 @@ namespace ArgusService.Controllers
     [Route("api/locations")]
     public class LocationsController : ControllerBase
     {
-        private readonly ILocationRepository _locationRepository;
+        private readonly ILocationManager _locationManager;
         private readonly ILogger<LocationsController> _logger;
+        private readonly IMapper _mapper; // Inject IMapper
 
-        public LocationsController(ILocationRepository locationRepository, ILogger<LocationsController> logger)
+        public LocationsController(ILocationManager locationManager, ILogger<LocationsController> logger, IMapper mapper)
         {
-            _locationRepository = locationRepository;
+            _locationManager = locationManager;
             _logger = logger;
+            _mapper = mapper; // Assign IMapper
         }
 
         /// <summary>
@@ -33,7 +37,7 @@ namespace ArgusService.Controllers
         /// }
         /// </summary>
         [HttpPost]
-        ///[Authorize(Roles = "admin,user")]
+        [Authorize(Roles = "admin,user")]
         public async Task<IActionResult> AddLocation([FromBody] LocationRequestDto dto)
         {
             if (!ModelState.IsValid)
@@ -44,14 +48,17 @@ namespace ArgusService.Controllers
 
             try
             {
-                await _locationRepository.AddLocationAsync(dto);
-                _logger.LogInformation("Location added for Tracker '{TrackerId}'.", dto.TrackerId);
-                return Ok(new { message = "Location added successfully." });
+                // Map DTO to Model
+                var location = _mapper.Map<Location>(dto);
+
+                await _locationManager.SaveLocationAsync(location.TrackerId, location.Latitude, location.Longitude, location.Timestamp);
+                _logger.LogInformation("Location added for Tracker '{TrackerId}'.", location.TrackerId);
+                return Ok(new { Message = "Location added successfully." });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error adding location for Tracker '{TrackerId}'.", dto.TrackerId);
-                return StatusCode(500, new { message = "An error occurred while adding the location." });
+                return StatusCode(500, new { Message = "An error occurred while adding the location." });
             }
         }
 
@@ -60,7 +67,7 @@ namespace ArgusService.Controllers
         /// Example GET: /api/locations/{trackerId}
         /// </summary>
         [HttpGet("{trackerId}")]
-        ///[Authorize(Roles = "admin,user")]
+        [Authorize(Roles = "admin,user")]
         public async Task<IActionResult> GetLocationHistory(string trackerId)
         {
             if (string.IsNullOrEmpty(trackerId))
@@ -71,7 +78,7 @@ namespace ArgusService.Controllers
 
             try
             {
-                var locations = await _locationRepository.GetLocationHistoryAsync(trackerId);
+                var locations = await _locationManager.GetLocationHistoryAsync(trackerId);
                 _logger.LogInformation("Fetched location history for Tracker '{TrackerId}'.", trackerId);
                 return Ok(locations);
             }
@@ -92,7 +99,7 @@ namespace ArgusService.Controllers
         /// Example GET: /api/locations/export/{trackerId}?format=csv
         /// </summary>
         [HttpGet("export/{trackerId}")]
-        ///[Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> ExportLocationHistory(string trackerId, [FromQuery] string format)
         {
             if (string.IsNullOrEmpty(trackerId))
@@ -109,7 +116,7 @@ namespace ArgusService.Controllers
 
             try
             {
-                var fileData = await _locationRepository.ExportLocationHistoryAsync(trackerId, format);
+                var fileData = await _locationManager.ExportLocationHistoryAsync(trackerId, format);
                 var contentType = format.ToLower() switch
                 {
                     "csv" => "text/csv",

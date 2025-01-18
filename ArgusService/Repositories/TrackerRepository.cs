@@ -56,13 +56,13 @@ namespace ArgusService.Repositories
             var tracker = new Tracker
             {
                 TrackerId = deviceId,
-                FirebaseUID = null,
-                Email = "default@example.com",
-                MqttUsername = "defaultUser",
-                MqttPassword = "defaultPass",
+                FirebaseUID = null,            
+                Email = "default@example.com", 
+                MqttUsername = "defaultUser",  
+                MqttPassword = "defaultPass",  
                 BrokerUrl = "http://broker.example.com",
                 Port = 1883,
-                LockState = "locked",
+                LockState = "locked",       
                 DesiredLockState = "locked",
                 LastKnownLocation = null,
                 LastUpdated = DateTime.UtcNow

@@ -16,6 +16,7 @@ using NLog;
 using NLog.Web;
 using System.Reflection;
 using System.Text;
+using AutoMapper; // Add this
 
 var logger = NLog.LogManager.Setup().LoadConfigurationFromFile("nlog.config").GetCurrentClassLogger();
 try
@@ -132,7 +133,12 @@ try
     builder.Services.AddAuthorization();
 
     // ---------------------------------------------
-    // 7. Register Controllers
+    // 7. Register AutoMapper
+    // ---------------------------------------------
+    builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+
+    // ---------------------------------------------
+    // 8. Register Controllers
     // ---------------------------------------------
 
     // IMPORTANT: Registers MVC controllers with the DI container.
@@ -140,7 +146,7 @@ try
     builder.Services.AddControllers();
 
     // ---------------------------------------------
-    // 8. Configure Swagger for API Documentation
+    // 9. Configure Swagger for API Documentation
     // ---------------------------------------------
 
     builder.Services.AddEndpointsApiExplorer();
@@ -184,7 +190,7 @@ try
     });
 
     // ---------------------------------------------
-    // 9. Configure CORS (Cross-Origin Resource Sharing)
+    // 10. Configure CORS (Cross-Origin Resource Sharing)
     // ---------------------------------------------
 
     // OPTIONAL: Adjust the allowed origins as per your requirements
@@ -199,16 +205,16 @@ try
     });
 
     // ---------------------------------------------
-    // 10. Build the Application
+    // 11. Build the Application
     // ---------------------------------------------
 
     var app = builder.Build();
 
     // ---------------------------------------------
-    // 11. Configure the HTTP Request Pipeline
+    // 12. Configure the HTTP Request Pipeline
     // ---------------------------------------------
 
-    // 11.1. Use Swagger in Development Environment
+    // 12.1. Use Swagger in Development Environment
     if (app.Environment.IsDevelopment())
     {
         app.UseDeveloperExceptionPage(); // Enable detailed error pages in development
@@ -221,21 +227,21 @@ try
         app.UseHsts();
     }
 
-    // 11.2. Use CORS Policy
+    // 12.2. Use CORS Policy
     app.UseCors("CorsPolicy");
 
-    // 11.3. Enforce HTTPS Redirection
+    // 12.3. Enforce HTTPS Redirection
     app.UseHttpsRedirection();
 
-    // 11.4. Enable Authentication and Authorization Middleware
+    // 12.4. Enable Authentication and Authorization Middleware
     app.UseAuthentication();
     app.UseAuthorization();
 
-    // 11.5. Map Controller Routes
+    // 12.5. Map Controller Routes
     app.MapControllers();
 
     // ---------------------------------------------
-    // 12. Initialize MQTT Connection at Startup
+    // 13. Initialize MQTT Connection at Startup
     // ---------------------------------------------
 
     // Execute asynchronous tasks before the application starts handling requests
@@ -262,7 +268,7 @@ try
     }
 
     // ---------------------------------------------
-    // 13. Run the Application
+    // 14. Run the Application
     // ---------------------------------------------
 
     app.Run();

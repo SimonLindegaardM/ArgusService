@@ -6,6 +6,8 @@ using ArgusService.DTOs;
 using ArgusService.Interfaces;   // IMqttRepository interface
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
+using AutoMapper; // Add this
+using ArgusService.Models; // Ensure this is included for the MqttMessage model
 
 namespace ArgusService.Controllers
 {
@@ -15,11 +17,13 @@ namespace ArgusService.Controllers
     {
         private readonly IMqttRepository _mqttRepository;
         private readonly ILogger<MqttController> _logger;
+        private readonly IMapper _mapper; // Inject IMapper
 
-        public MqttController(IMqttRepository mqttRepository, ILogger<MqttController> logger)
+        public MqttController(IMqttRepository mqttRepository, ILogger<MqttController> logger, IMapper mapper)
         {
             _mqttRepository = mqttRepository;
             _logger = logger;
+            _mapper = mapper; // Assign IMapper
         }
 
         /// <summary>
@@ -43,7 +47,10 @@ namespace ArgusService.Controllers
 
             try
             {
-                await _mqttRepository.PublishMessageAsync(request);
+                // Map DTO to Model
+                var mqttMessage = _mapper.Map<MqttMessage>(request);
+
+                await _mqttRepository.PublishMessageAsync(mqttMessage);
                 _logger.LogInformation("Published MQTT message to Tracker '{TrackerId}' on topic '{TopicType}'.", request.TrackerId, request.TopicType);
                 return Ok(new { Message = "MQTT message published successfully." });
             }

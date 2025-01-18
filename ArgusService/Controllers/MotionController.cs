@@ -3,9 +3,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ArgusService.DTOs;
-using ArgusService.Interfaces;   // IMotionRepository interface
+using ArgusService.Interfaces;   // IMotionManager interface
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
+using AutoMapper; // Add this
+using ArgusService.Models; // Ensure this is included for the Motion model
 
 namespace ArgusService.Controllers
 {
@@ -13,13 +15,15 @@ namespace ArgusService.Controllers
     [Route("api/motions")]
     public class MotionsController : ControllerBase
     {
-        private readonly IMotionRepository _motionRepository;
+        private readonly IMotionManager _motionManager;
         private readonly ILogger<MotionsController> _logger;
+        private readonly IMapper _mapper; // Inject IMapper
 
-        public MotionsController(IMotionRepository motionRepository, ILogger<MotionsController> logger)
+        public MotionsController(IMotionManager motionManager, ILogger<MotionsController> logger, IMapper mapper)
         {
-            _motionRepository = motionRepository;
+            _motionManager = motionManager;
             _logger = logger;
+            _mapper = mapper; // Assign IMapper
         }
 
         /// <summary>
@@ -43,19 +47,17 @@ namespace ArgusService.Controllers
 
             try
             {
-                await _motionRepository.AddMotionEventAsync(dto);
-                _logger.LogInformation("Motion event logged for Tracker '{TrackerId}'.", dto.TrackerId);
+                // Map DTO to Model
+                var motion = _mapper.Map<Motion>(dto);
+
+                await _motionManager.LogMotionEventAsync(motion.TrackerId, motion.MotionDetected, motion.Timestamp);
+                _logger.LogInformation("Motion event logged for Tracker '{TrackerId}'.", motion.TrackerId);
                 return Ok(new { Message = "Motion event added successfully." });
             }
             catch (ArgumentException argEx)
             {
                 _logger.LogError(argEx, "Invalid argument while logging motion event for Tracker '{TrackerId}'.", dto.TrackerId);
                 return BadRequest(new { Message = argEx.Message });
-            }
-            catch (InvalidOperationException invOpEx)
-            {
-                _logger.LogError(invOpEx, "Invalid operation while logging motion event for Tracker '{TrackerId}'.", dto.TrackerId);
-                return BadRequest(new { Message = invOpEx.Message });
             }
             catch (Exception ex)
             {
@@ -80,7 +82,8 @@ namespace ArgusService.Controllers
 
             try
             {
-                var motionEvents = await _motionRepository.FetchMotionEventsAsync(trackerId);
+                // Ensure the method name matches the interface
+                var motionEvents = await _motionManager.FetchMotionEventsAsync(trackerId);
                 _logger.LogInformation("Fetched motion events for Tracker '{TrackerId}'.", trackerId);
                 return Ok(motionEvents);
             }

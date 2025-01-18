@@ -102,6 +102,7 @@ namespace ArgusService.Models
         /// <summary>
         /// Collection of locations associated with this tracker.
         /// </summary>
+        public DateTime CreatedAt { get; set; } // Added Property
         public ICollection<Location> Locations { get; set; } = new List<Location>();
     }
 }

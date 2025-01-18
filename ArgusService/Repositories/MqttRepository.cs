@@ -1,7 +1,10 @@
-﻿using ArgusService.Interfaces;
+﻿// File: ArgusService/Repositories/MqttRepository.cs
+
+using ArgusService.Interfaces;
 using ArgusService.Models;
 using Microsoft.Extensions.Options;
 using MQTTnet;
+
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -136,6 +139,7 @@ namespace ArgusService.Repositories
                     .WithTopic(topic)
                     .WithPayload(payload)
                     .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.AtMostOnce)
+                    .WithRetainFlag(false)
                     .Build();
 
                 await _mqttClient.PublishAsync(message);
@@ -170,6 +174,49 @@ namespace ArgusService.Repositories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to unsubscribe from topic: {Topic}", topic);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Publishes an MQTT message.
+        /// </summary>
+        /// <param name="message">The MQTT message to publish.</param>
+        public async Task PublishMessageAsync(MqttMessage message)
+        {
+            if (message == null)
+                throw new ArgumentNullException(nameof(message));
+
+            if (string.IsNullOrEmpty(message.TrackerId))
+                throw new ArgumentException("TrackerId cannot be null or empty.", nameof(message.TrackerId));
+
+            if (string.IsNullOrEmpty(message.TopicType))
+                throw new ArgumentException("TopicType cannot be null or empty.", nameof(message.TopicType));
+
+            if (!_mqttClient.IsConnected)
+            {
+                _logger.LogError("Cannot publish MQTT message because MQTT client is not connected.");
+                throw new InvalidOperationException("MQTT client is not connected.");
+            }
+
+            try
+            {
+                var topic = $"{message.TrackerId}/{message.TopicType}";
+                var payload = System.Text.Json.JsonSerializer.Serialize(message.Payload);
+
+                var mqttMessagePayload = new MqttApplicationMessageBuilder()
+                    .WithTopic(topic)
+                    .WithPayload(payload)
+                    .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.AtMostOnce)
+                    .WithRetainFlag(false)
+                    .Build();
+
+                await _mqttClient.PublishAsync(mqttMessagePayload);
+                _logger.LogInformation("Published MQTT message to topic: {Topic}", topic);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to publish MQTT message to topic: {Topic}", $"{message.TrackerId}/{message.TopicType}");
                 throw;
             }
         }

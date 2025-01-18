@@ -52,8 +52,8 @@ namespace ArgusService.Controllers
 
             try
             {
-                // Assuming AttachedTrackerId is not applicable for Trackers, passing null
-                await _trackerManager.RegisterDeviceAsync(request.DeviceId, request.DeviceType, null, request);
+                // Corrected: Passing only up to 3 arguments as defined in ITrackerManager
+                await _trackerManager.RegisterDeviceAsync(request.DeviceId, request.DeviceType, null);
                 _logger.LogInformation("Tracker '{DeviceId}' registered successfully.", request.DeviceId);
                 return CreatedAtAction(nameof(RegisterTracker), new { request.DeviceId }, new { Message = "Tracker registered successfully." });
             }

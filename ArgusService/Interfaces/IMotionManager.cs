@@ -1,4 +1,6 @@
-﻿using ArgusService.Models;
+﻿// File: ArgusService/Interfaces/IMotionManager.cs
+
+using ArgusService.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -12,7 +14,7 @@ namespace ArgusService.Interfaces
         /// <summary>
         /// Logs a motion detection event for a Tracker.
         /// </summary>
-        Task LogMotionEventAsync(string trackerId, bool motionDetected);
+        Task LogMotionEventAsync(string trackerId, bool motionDetected, DateTime timestamp);
 
         /// <summary>
         /// Retrieves all motion detection events for a Tracker.
