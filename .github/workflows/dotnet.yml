@@ -33,4 +33,17 @@ jobs:
 
       # Run tests
       - name: Run tests
-        run: dotnet test ArgusService-UnitTest/ArgusService-UnitTest.csproj --configuration Release --logger "trx;LogFileName=test_results.trx" --filter FullyQualifiedName~UnitTest_Model.CategoryTests
+        run: dotnet test ArgusService-UnitTest/ArgusService-UnitTest.csproj --configuration Release --logger "trx;LogFileName=test_results.trx" --results-directory ./TestResults
+
+      # Upload test results as artifacts
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: TestResults
+          path: ./TestResults/test_results.trx
+      
+      # Parse test results
+      - name: Parse test results
+        uses: mikepenz/action-junit-report@v3
+        with:
+          report_paths: '**/TestResults/*.trx'
