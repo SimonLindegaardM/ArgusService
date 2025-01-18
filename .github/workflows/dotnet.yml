@@ -33,4 +33,4 @@ jobs:
 
       # Run tests
       - name: Run tests
-        run: dotnet test ArgusService-UnitTest/ArgusService-UnitTest.csproj --configuration Release
+        run: dotnet test ArgusService-UnitTest/ArgusService-UnitTest.csproj --configuration Release --logger "trx;LogFileName=test_results.trx"
