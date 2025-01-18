@@ -5,22 +5,22 @@ using System.Threading.Tasks;
 namespace ArgusService.Interfaces
 {
     /// <summary>
-    /// Interface for Location manager operations (business logic).
+    /// Interface for Location repository operations (data access).
     /// </summary>
-    public interface ILocationManager
+    public interface ILocationRepository
     {
         /// <summary>
-        /// Saves a location update for a tracker.
+        /// Adds a new location entry to the database.
         /// </summary>
-        Task SaveLocationAsync(string trackerId, double latitude, double longitude, DateTime? timestamp = null);
+        Task AddLocationAsync(Location location);
 
         /// <summary>
-        /// Retrieves the location history for a given tracker.
+        /// Retrieves location history for a specific tracker.
         /// </summary>
         Task<List<Location>> GetLocationHistoryAsync(string trackerId);
 
         /// <summary>
-        /// Exports the location history in CSV or PDF format.
+        /// Exports location history for a specific tracker in CSV or PDF format.
         /// </summary>
         Task<byte[]> ExportLocationHistoryAsync(string trackerId, string format);
     }

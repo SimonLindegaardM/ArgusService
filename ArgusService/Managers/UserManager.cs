@@ -1,15 +1,21 @@
-﻿using ArgusService.Interfaces;
+﻿using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using ArgusService.Interfaces;
 using ArgusService.Models;
-using ArgusService.Repositories;
-using System.Data;
+using ArgusService.Repositories; // Typically you'd reference interfaces only, but here we have direct usage.
 
 namespace ArgusService.Managers
 {
+    /// <summary>
+    /// UserManager implements IUserManager and uses an IUserRepository for data access.
+    /// </summary>
     public class UserManager : IUserManager
     {
-        private readonly UserRepository _userRepository;
+        private readonly IUserRepository _userRepository;
 
-        public UserManager(UserRepository userRepository)
+        // Note: Better to depend on IUserRepository, not the concrete UserRepository
+        public UserManager(IUserRepository userRepository)
         {
             _userRepository = userRepository;
         }
@@ -46,7 +52,7 @@ namespace ArgusService.Managers
         }
 
         /// <summary>
-        /// Validates that a user exists in the database.
+        /// Validates that a user exists in the database by checking their role.
         /// </summary>
         public async Task<bool> ValidateUserAsync(string firebaseUID)
         {
@@ -71,6 +77,10 @@ namespace ArgusService.Managers
                 await _userRepository.UpdateUserAsync(user);
             }
         }
+
+        /// <summary>
+        /// Retrieves all users with a specific role.
+        /// </summary>
         public async Task<List<User>> GetUsersByRoleAsync(string role)
         {
             if (role != "admin" && role != "user")

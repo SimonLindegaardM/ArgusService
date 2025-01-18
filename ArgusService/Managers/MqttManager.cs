@@ -5,9 +5,9 @@ namespace ArgusService.Managers
 {
     public class MqttManager : IMqttManager
     {
-        private readonly MqttRepository _mqttRepository;
+        private readonly IMqttRepository _mqttRepository;
 
-        public MqttManager(MqttRepository mqttRepository)
+        public MqttManager(IMqttRepository mqttRepository)
         {
             _mqttRepository = mqttRepository;
         }

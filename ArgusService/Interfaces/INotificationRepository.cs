@@ -5,18 +5,18 @@ using System.Threading.Tasks;
 namespace ArgusService.Interfaces
 {
     /// <summary>
-    /// Interface for Notification manager operations.
+    /// Interface for Notification repository operations.
     /// </summary>
-    public interface INotificationManager
+    public interface INotificationRepository
     {
         /// <summary>
-        /// Creates a new notification.
+        /// Saves a new notification into the database.
         /// </summary>
-        Task CreateNotificationAsync(Notification notification);
+        Task AddNotificationAsync(Notification notification);
 
         /// <summary>
         /// Fetches all notifications for a specific user.
         /// </summary>
-        Task<List<Notification>> FetchNotificationsAsync(string userId);
+        Task<List<Notification>> GetNotificationsByUserIdAsync(string userId);
     }
 }

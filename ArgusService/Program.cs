@@ -1,134 +1,280 @@
-using Microsoft.EntityFrameworkCore;
-using ArgusService.Data;
-using ArgusService.Repositories;
-using System;
+// File: Program.cs
+
 using ArgusService.Interfaces;
 using ArgusService.Managers;
-
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
-using Microsoft.OpenApi.Models;
+using ArgusService.Models;
+using ArgusService.Repositories;
+using ArgusService.Data;
 using DotNetEnv;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using MQTTnet;
+using NLog;
+using NLog.Web;
+using System.Reflection;
+using System.Text;
 
-var builder = WebApplication.CreateBuilder(args);
+var logger = NLog.LogManager.Setup().LoadConfigurationFromFile("nlog.config").GetCurrentClassLogger();
+try
+{
+    logger.Debug("Init main");
 
-// Load environment variables from the .env file
-DotNetEnv.Env.Load();
+    var builder = WebApplication.CreateBuilder(args);
 
-// Retrieve the database connection string from the .env file
-string connectionString = Environment.GetEnvironmentVariable("MY_DB_CONNECTION");
+    // ---------------------------------------------
+    // 1. Load Environment Variables from .env File
+    // ---------------------------------------------
 
-// Update the configuration with the connection string
-builder.Configuration["ConnectionStrings:MyLocalDbConnection"] = connectionString;
+    // Ensure the .env file is loaded before accessing any environment variables
+    Env.Load();
 
-// Add services to the container.
-builder.Services.AddControllers();
+    // ---------------------------------------------
+    // 2. Configure Logging
+    // ---------------------------------------------
 
-builder.Services.AddDbContext<MyDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("MyLocalDbConnection")));
+    // Clear default logging providers
+    builder.Logging.ClearProviders();
 
-builder.Services.AddScoped<UserRepository>();
-builder.Services.AddScoped<UserManager>();
-builder.Services.AddScoped<TrackerRepository>();
-builder.Services.AddScoped<TrackerManager>();
-builder.Services.AddScoped<LockRepository>();
-builder.Services.AddScoped<NotificationRepository>();
-builder.Services.AddScoped<LocationRepository>();
-builder.Services.AddScoped<LockManager>();
-builder.Services.AddScoped<NotificationManager>();
-builder.Services.AddScoped<LocationManager>();
-builder.Services.AddScoped<MotionRepository>();
-builder.Services.AddScoped<MqttRepository>();
-builder.Services.AddScoped<MotionManager>();
-builder.Services.AddScoped<MqttManager>();
+    // Use NLog as the logging provider
+    builder.Logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Information);
+    builder.Host.UseNLog();
 
-builder.Services.AddScoped<IUser, UserRepository>();
-builder.Services.AddScoped<IUserManager, UserManager>();
-builder.Services.AddScoped<ITracker, TrackerRepository>();
-builder.Services.AddScoped<ITrackerManager, TrackerManager>();
-builder.Services.AddScoped<ILock, LockRepository>();
-builder.Services.AddScoped<INotification, NotificationRepository>();
-builder.Services.AddScoped<ILocation, LocationRepository>();
-builder.Services.AddScoped<ILockManager, LockManager>();
-builder.Services.AddScoped<INotificationManager, NotificationManager>();
-builder.Services.AddScoped<ILocationManager, LocationManager>();
-builder.Services.AddScoped<IMotion, MotionRepository>();
-builder.Services.AddScoped<IMqtt, MqttRepository>();
-builder.Services.AddScoped<IMotionManager, MotionManager>();
-builder.Services.AddScoped<IMqttManager, MqttManager>();
+    // ---------------------------------------------
+    // 3. Register Configuration Settings
+    // ---------------------------------------------
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    // Bind MQTT settings from environment variables to the MqttSettings class
+    builder.Services.Configure<MqttSettings>(options =>
+    {
+        options.ClientId = Environment.GetEnvironmentVariable("MQTT_CLIENT_ID") ?? "DefaultClientId";
+        options.Broker = Environment.GetEnvironmentVariable("MQTT_BROKER") ?? "broker.example.com";
+        options.Port = int.TryParse(Environment.GetEnvironmentVariable("MQTT_PORT"), out var port) ? port : 1883;
+        options.CleanSession = bool.TryParse(Environment.GetEnvironmentVariable("MQTT_CLEAN_SESSION"), out var cleanSession) ? cleanSession : true;
+        options.Username = Environment.GetEnvironmentVariable("MQTT_USERNAME"); // Optional
+        options.Password = Environment.GetEnvironmentVariable("MQTT_PASSWORD"); // Optional
+    });
+
+    // ---------------------------------------------
+    // 4. Register Services with Dependency Injection (DI)
+    // ---------------------------------------------
+
+    // 4.1. Register MQTT Client as Singleton
+    builder.Services.AddSingleton<IMqttClient>(sp =>
+    {
+        var factory = new MqttClientFactory();
+        return factory.CreateMqttClient();
+    });
+
+    // 4.2. Register Repositories
+    builder.Services.AddScoped<IUserRepository, UserRepository>();
+    builder.Services.AddScoped<ITrackerRepository, TrackerRepository>();
+    builder.Services.AddScoped<ILockRepository, LockRepository>();
+    builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+    builder.Services.AddScoped<ILocationRepository, LocationRepository>();
+    builder.Services.AddScoped<IMotionRepository, MotionRepository>();
+    builder.Services.AddScoped<IMqttRepository, MqttRepository>();
+
+    // 4.3. Register Managers
+    builder.Services.AddScoped<IUserManager, UserManager>();
+    builder.Services.AddScoped<ITrackerManager, TrackerManager>();
+    builder.Services.AddScoped<ILockManager, LockManager>();
+    builder.Services.AddScoped<INotificationManager, NotificationManager>();
+    builder.Services.AddScoped<ILocationManager, LocationManager>();
+    builder.Services.AddScoped<IMotionManager, MotionManager>();
+    builder.Services.AddScoped<IMqttManager, MqttManager>();
+
+    // ---------------------------------------------
+    // 5. Register DbContext (Entity Framework Core)
+    // ---------------------------------------------
+
+    var dbConnectionString = Environment.GetEnvironmentVariable("MY_DB_CONNECTION")
+                              ?? builder.Configuration.GetConnectionString("MyLocalDbConnection");
+
+    if (string.IsNullOrEmpty(dbConnectionString))
+    {
+        throw new InvalidOperationException("Database connection string 'MY_DB_CONNECTION' is not set.");
+    }
+
+    builder.Services.AddDbContext<ApplicationDbContext>(options =>
+        options.UseSqlServer(dbConnectionString));
+
+    // ---------------------------------------------
+    // 6. Configure Authentication and Authorization
+    // ---------------------------------------------
+
+    builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
     .AddJwtBearer(options =>
     {
+        // Retrieve JWT settings from environment variables
+        var jwtIssuer = Environment.GetEnvironmentVariable("Jwt_Issuer") ?? "DefaultIssuer";
+        var jwtAudience = Environment.GetEnvironmentVariable("Jwt_Audience") ?? "DefaultAudience";
+        var jwtKey = Environment.GetEnvironmentVariable("Jwt_Key") ?? "DefaultSecretKey12345";
+
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
         };
     });
 
-builder.Services.AddAuthorization();
+    builder.Services.AddAuthorization();
 
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
+    // ---------------------------------------------
+    // 7. Register Controllers
+    // ---------------------------------------------
 
-builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new OpenApiInfo
+    // IMPORTANT: Registers MVC controllers with the DI container.
+    // Essential for routing HTTP requests to controller actions.
+    builder.Services.AddControllers();
+
+    // ---------------------------------------------
+    // 8. Configure Swagger for API Documentation
+    // ---------------------------------------------
+
+    builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddSwaggerGen(c =>
     {
-        Title = "My API",
-        Version = "v1"
-    });
+        c.SwaggerDoc("v1", new OpenApiInfo { Title = "ArgusService API", Version = "v1" });
 
-    // Add JWT Authentication to Swagger
-    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-    {
-        Name = "Authorization",
-        Type = SecuritySchemeType.Http,
-        Scheme = "Bearer",
-        BearerFormat = "JWT",
-        In = ParameterLocation.Header,
-        Description = "Enter 'Bearer' [space] and then your valid token in the text input below.\n\nExample: \"Bearer eyJhbGci...\""
-    });
-
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
+        // Include XML comments if enabled in .csproj for better documentation
+        var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+        var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+        if (System.IO.File.Exists(xmlPath))
         {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            Array.Empty<string>()
+            c.IncludeXmlComments(xmlPath);
         }
+
+        // Configure JWT Authentication in Swagger
+        c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+        {
+            Name = "Authorization",
+            Type = SecuritySchemeType.Http,
+            Scheme = "Bearer",
+            BearerFormat = "JWT",
+            In = ParameterLocation.Header,
+            Description = "Enter 'Bearer' [space] and then your valid token."
+        });
+
+        c.AddSecurityRequirement(new OpenApiSecurityRequirement
+        {
+            {
+                new OpenApiSecurityScheme
+                {
+                    Reference = new OpenApiReference
+                    {
+                        Type = ReferenceType.SecurityScheme,
+                        Id = "Bearer"
+                    }
+                },
+                Array.Empty<string>()
+            }
+        });
     });
-});
 
-var app = builder.Build();
+    // ---------------------------------------------
+    // 9. Configure CORS (Cross-Origin Resource Sharing)
+    // ---------------------------------------------
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    // OPTIONAL: Adjust the allowed origins as per your requirements
+    builder.Services.AddCors(options =>
+    {
+        options.AddPolicy("CorsPolicy", policyBuilder =>
+        {
+            policyBuilder.WithOrigins("https://yourdomain.com") // Replace with your client domain
+                         .AllowAnyMethod()
+                         .AllowAnyHeader();
+        });
+    });
+
+    // ---------------------------------------------
+    // 10. Build the Application
+    // ---------------------------------------------
+
+    var app = builder.Build();
+
+    // ---------------------------------------------
+    // 11. Configure the HTTP Request Pipeline
+    // ---------------------------------------------
+
+    // 11.1. Use Swagger in Development Environment
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseDeveloperExceptionPage(); // Enable detailed error pages in development
+        app.UseSwagger();
+        app.UseSwaggerUI();
+    }
+    else
+    {
+        app.UseExceptionHandler("/Home/Error"); // Generic error page for production
+        app.UseHsts();
+    }
+
+    // 11.2. Use CORS Policy
+    app.UseCors("CorsPolicy");
+
+    // 11.3. Enforce HTTPS Redirection
+    app.UseHttpsRedirection();
+
+    // 11.4. Enable Authentication and Authorization Middleware
+    app.UseAuthentication();
+    app.UseAuthorization();
+
+    // 11.5. Map Controller Routes
+    app.MapControllers();
+
+    // ---------------------------------------------
+    // 12. Initialize MQTT Connection at Startup
+    // ---------------------------------------------
+
+    // Execute asynchronous tasks before the application starts handling requests
+    using (var scope = app.Services.CreateScope())
+    {
+        var mqttManager = scope.ServiceProvider.GetRequiredService<IMqttManager>();
+
+        try
+        {
+            // Initialize MQTT connection
+            await mqttManager.InitializeConnectionAsync();
+            logger.Info("MQTT connection initialized successfully.");
+
+            // Start monitoring MQTT connection status
+            await mqttManager.MonitorConnectionStatusAsync();
+            logger.Info("MQTT connection monitoring started.");
+        }
+        catch (Exception ex)
+        {
+            // Log the exception and decide whether to terminate the application
+            logger.Error(ex, "Failed to initialize MQTT connection.");
+            throw;
+        }
+    }
+
+    // ---------------------------------------------
+    // 13. Run the Application
+    // ---------------------------------------------
+
+    app.Run();
 }
-
-app.UseCors(x => x.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
-
-app.UseHttpsRedirection();
-
-app.UseAuthentication();
-app.UseAuthorization();
-
-app.MapControllers();
-
-app.Run();
+catch (Exception ex)
+{
+    // NLog: catch setup errors
+    logger.Error(ex, "Stopped program because of exception");
+    throw;
+}
+finally
+{
+    // Ensure to flush and stop internal timers/threads before application exit (Avoid segmentation fault on Linux)
+    NLog.LogManager.Shutdown();
+}

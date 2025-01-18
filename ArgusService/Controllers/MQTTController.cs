@@ -1,114 +1,57 @@
-﻿using ArgusService.Interfaces;
-using ArgusService.Managers;
+﻿// File: ArgusService/Controllers/MqttController.cs
+
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ArgusService.DTOs;
+using ArgusService.Interfaces;   // IMqttRepository interface
+using Microsoft.Extensions.Logging;
+using System.Threading.Tasks;
 
 namespace ArgusService.Controllers
 {
     [ApiController]
     [Route("api/mqtt")]
-    public class MQTTController : ControllerBase
+    public class MqttController : ControllerBase
     {
-        private readonly MqttManager _mqttManager;
+        private readonly IMqttRepository _mqttRepository;
+        private readonly ILogger<MqttController> _logger;
 
-        public MQTTController(MqttManager mqttManager)
+        public MqttController(IMqttRepository mqttRepository, ILogger<MqttController> logger)
         {
-            _mqttManager = mqttManager;
+            _mqttRepository = mqttRepository;
+            _logger = logger;
         }
 
         /// <summary>
-        /// Initializes the connection to the MQTT broker.
-        /// </summary>
-        [HttpPost("initialize")]
-        public async Task<IActionResult> InitializeConnection()
-        {
-            try
-            {
-                await _mqttManager.InitializeConnectionAsync();
-                return Ok(new { Message = "MQTT connection initialized successfully." });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
-        }
-
-        /// <summary>
-        /// Monitors the MQTT broker connection status.
-        /// </summary>
-        [HttpGet("status")]
-        public async Task<IActionResult> MonitorConnectionStatus()
-        {
-            try
-            {
-                await _mqttManager.MonitorConnectionStatusAsync();
-                return Ok(new { Message = "MQTT connection status monitored successfully." });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
-        }
-
-        /// <summary>
-        /// Publishes a message to a specific MQTT topic.
+        /// Publishes an MQTT message.
+        /// Example body:
+        /// {
+        ///   "trackerId": "Tracker001",
+        ///   "topicType": "telemetry",
+        ///   "payload": { "data": "sample" }
+        /// }
         /// </summary>
         [HttpPost("publish")]
-        public async Task<IActionResult> PublishMessage([FromBody] PublishMessageRequest request)
+        [Authorize(Roles = "admin,user")]
+        public async Task<IActionResult> PublishMessage([FromBody] MqttPublishRequestDto request)
         {
+            if (!ModelState.IsValid)
+            {
+                _logger.LogWarning("Invalid MqttPublishRequestDto received.");
+                return BadRequest(ModelState);
+            }
+
             try
             {
-                await _mqttManager.PublishMessageAsync(request.Topic, request.Payload);
-                return Ok(new { Message = "Message published successfully." });
+                await _mqttRepository.PublishMessageAsync(request);
+                _logger.LogInformation("Published MQTT message to Tracker '{TrackerId}' on topic '{TopicType}'.", request.TrackerId, request.TopicType);
+                return Ok(new { Message = "MQTT message published successfully." });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                _logger.LogError(ex, "Error publishing MQTT message for Tracker '{TrackerId}'.", request.TrackerId);
+                return StatusCode(500, new { Message = "An error occurred while publishing the MQTT message." });
             }
         }
-
-        /// <summary>
-        /// Subscribes to a specific MQTT topic.
-        /// </summary>
-        [HttpPost("subscribe")]
-        public async Task<IActionResult> SubscribeToTopic([FromBody] TopicRequest request)
-        {
-            try
-            {
-                await _mqttManager.SubscribeToTopicAsync(request.Topic);
-                return Ok(new { Message = "Subscribed to topic successfully." });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
-        }
-
-        /// <summary>
-        /// Unsubscribes from a specific MQTT topic.
-        /// </summary>
-        [HttpPost("unsubscribe")]
-        public async Task<IActionResult> UnsubscribeFromTopic([FromBody] TopicRequest request)
-        {
-            try
-            {
-                await _mqttManager.UnsubscribeFromTopicAsync(request.Topic);
-                return Ok(new { Message = "Unsubscribed from topic successfully." });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
-        }
-    }
-
-    public class PublishMessageRequest
-    {
-        public string Topic { get; set; }
-        public string Payload { get; set; }
-    }
-
-    public class TopicRequest
-    {
-        public string Topic { get; set; }
     }
 }

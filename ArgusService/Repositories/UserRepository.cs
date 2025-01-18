@@ -1,25 +1,31 @@
-﻿using ArgusService.Data;
-using ArgusService.Interfaces;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using ArgusService.Data;               // Make sure this namespace is correct
+using ArgusService.Interfaces;         // Ensure IUserRepository is here
 using ArgusService.Models;
 using Microsoft.EntityFrameworkCore;
-using System;
 
 namespace ArgusService.Repositories
 {
-    public class UserRepository : IUser
+    public class UserRepository : IUserRepository
     {
-        private readonly MyDbContext _context;
+        private readonly ApplicationDbContext _context;
 
-        public UserRepository(MyDbContext context)
+        public UserRepository(ApplicationDbContext context)
         {
             _context = context;
         }
+
         /// <summary>
         /// Retrieves the role assigned to a user by their Firebase UID.
         /// </summary>
         public async Task<string> GetUserRoleAsync(string firebaseUID)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.FirebaseUID == firebaseUID);
+            // Fetch user by FirebaseUID
+            var user = await _context.Users
+                                     .FirstOrDefaultAsync(u => u.FirebaseUID == firebaseUID);
             return user?.Role;
         }
 
@@ -28,7 +34,8 @@ namespace ArgusService.Repositories
         /// </summary>
         public async Task UpdateUserRoleAsync(string firebaseUID, string role)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.FirebaseUID == firebaseUID);
+            var user = await _context.Users
+                                     .FirstOrDefaultAsync(u => u.FirebaseUID == firebaseUID);
             if (user != null)
             {
                 user.Role = role;
@@ -41,26 +48,29 @@ namespace ArgusService.Repositories
         /// </summary>
         public async Task<User> GetUserDetailsAsync(string firebaseUID)
         {
-            return await _context.Users.FirstOrDefaultAsync(u => u.FirebaseUID == firebaseUID);
+            return await _context.Users
+                                 .FirstOrDefaultAsync(u => u.FirebaseUID == firebaseUID);
         }
 
         /// <summary>
-        /// Updates an existing user's details.
+        /// Updates an existing user's details (email, prefs, role).
         /// </summary>
         public async Task UpdateUserAsync(User user)
         {
-            var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.FirebaseUID == user.FirebaseUID);
+            var existingUser = await _context.Users
+                                             .FirstOrDefaultAsync(u => u.FirebaseUID == user.FirebaseUID);
             if (existingUser != null)
             {
                 existingUser.Email = user.Email;
                 existingUser.NotificationPreferences = user.NotificationPreferences;
                 existingUser.Role = user.Role;
+
                 await _context.SaveChangesAsync();
             }
         }
 
         /// <summary>
-        /// Creates a new user with a default role.
+        /// Creates a new user with a default role ("user") if none provided.
         /// </summary>
         public async Task CreateUserAsync(User user)
         {
@@ -71,9 +81,15 @@ namespace ArgusService.Repositories
                 await _context.SaveChangesAsync();
             }
         }
+
+        /// <summary>
+        /// Retrieves all users with a specific role.
+        /// </summary>
         public async Task<List<User>> GetUsersByRoleAsync(string role)
         {
-            return await _context.Users.Where(u => u.Role == role).ToListAsync();
+            return await _context.Users
+                                 .Where(u => u.Role == role)
+                                 .ToListAsync();
         }
     }
 }

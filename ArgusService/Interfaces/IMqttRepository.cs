@@ -1,8 +1,7 @@
-﻿using ArgusService.Models;
-
+﻿// File: ArgusService/Interfaces/IMqttRepository.cs
 namespace ArgusService.Interfaces
 {
-    public interface IMqtt
+    public interface IMqttRepository
     {
         Task InitializeMQTTBrokerConnectionAsync();
         Task MonitorMQTTBrokerStatusAsync();

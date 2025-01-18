@@ -5,24 +5,24 @@ using System.Threading.Tasks;
 namespace ArgusService.Interfaces
 {
     /// <summary>
-    /// Interface for lock-related business logic.
+    /// Interface for Lock repository operations (data access).
     /// </summary>
-    public interface ILockManager
+    public interface ILockRepository
     {
         /// <summary>
         /// Registers a new lock device and associates it with a tracker.
         /// </summary>
-        Task RegisterLockToTrackerAsync(string lockId, string trackerId);
+        Task RegisterLockAsync(string lockId, string trackerId);
 
         /// <summary>
-        /// Fetches all locks attached to a specific tracker.
-        /// </summary>
-        Task<List<Lock>> FetchLocksByTrackerIdAsync(string trackerId);
-
-        /// <summary>
-        /// Updates the state of a lock to either 'locked' or 'unlocked'.
+        /// Updates the lock state ("locked"/"unlocked") for a given lock ID.
         /// </summary>
         Task UpdateLockStateAsync(string lockId, string lockState);
+
+        /// <summary>
+        /// Retrieves all locks attached to a particular tracker.
+        /// </summary>
+        Task<List<Lock>> GetLocksByTrackerIdAsync(string trackerId);
 
         /// <summary>
         /// Retrieves all locks in the system.
@@ -30,7 +30,7 @@ namespace ArgusService.Interfaces
         Task<List<Lock>> GetAllLocksAsync();
 
         /// <summary>
-        /// Retrieves details of a specific lock by its ID.
+        /// Retrieves a specific lock by its lock ID.
         /// </summary>
         Task<Lock> GetLockByIdAsync(string lockId);
     }

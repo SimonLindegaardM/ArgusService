@@ -1,8 +1,10 @@
-﻿using ArgusService.Models;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
+using ArgusService.Models;
 
 namespace ArgusService.Interfaces
 {
-    public interface IUser
+    public interface IUserRepository
     {
         Task<string> GetUserRoleAsync(string firebaseUID);
         Task UpdateUserRoleAsync(string firebaseUID, string role);

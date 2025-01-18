@@ -1,4 +1,6 @@
-﻿using ArgusService.Models;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
+using ArgusService.Models;
 
 namespace ArgusService.Interfaces
 {

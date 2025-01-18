@@ -1,26 +1,38 @@
 ﻿using ArgusService.Interfaces;
 using ArgusService.Models;
+using Microsoft.Extensions.Options;
 using MQTTnet;
-using MQTTnet.Client;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace ArgusService.Repositories
 {
-    public class MqttRepository : IMqtt
+    public class MqttRepository : IMqttRepository
     {
         private readonly IMqttClient _mqttClient;
         private readonly MqttClientOptions _mqttOptions;
+        private readonly ILogger<MqttRepository> _logger;
 
-        public MqttRepository()
+        public MqttRepository(IMqttClient mqttClient, IOptions<MqttSettings> mqttSettings, ILogger<MqttRepository> logger)
         {
-            var factory = new MqttFactory();
-            _mqttClient = factory.CreateMqttClient();
+            _mqttClient = mqttClient ?? throw new ArgumentNullException(nameof(mqttClient));
+            var settings = mqttSettings?.Value ?? throw new ArgumentNullException(nameof(mqttSettings));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-            // Configure MQTT client options
-            _mqttOptions = new MqttClientOptionsBuilder()
-                .WithClientId("MQTT_Client")
-                .WithTcpServer("broker.example.com", 1883) // Replace with actual broker details
-                .WithCleanSession()
-                .Build();
+            var mqttOptionsBuilder = new MqttClientOptionsBuilder()
+                .WithClientId(settings.ClientId)
+                .WithTcpServer(settings.Broker, settings.Port)
+                .WithCleanSession(settings.CleanSession);
+
+            // Add authentication if credentials are provided
+            if (!string.IsNullOrEmpty(settings.Username) && !string.IsNullOrEmpty(settings.Password))
+            {
+                mqttOptionsBuilder = mqttOptionsBuilder.WithCredentials(settings.Username, settings.Password);
+            }
+
+            _mqttOptions = mqttOptionsBuilder.Build();
         }
 
         /// <summary>
@@ -30,8 +42,20 @@ namespace ArgusService.Repositories
         {
             if (!_mqttClient.IsConnected)
             {
-                await _mqttClient.ConnectAsync(_mqttOptions, CancellationToken.None);
-                Console.WriteLine("Connected to MQTT broker.");
+                try
+                {
+                    await _mqttClient.ConnectAsync(_mqttOptions, CancellationToken.None);
+                    _logger.LogInformation("Connected to MQTT broker.");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to connect to MQTT broker.");
+                    throw;
+                }
+            }
+            else
+            {
+                _logger.LogInformation("MQTT client is already connected.");
             }
         }
 
@@ -42,13 +66,21 @@ namespace ArgusService.Repositories
         {
             _mqttClient.ConnectedAsync += async e =>
             {
-                Console.WriteLine("MQTT broker connected.");
+                _logger.LogInformation("MQTT broker connected.");
             };
 
             _mqttClient.DisconnectedAsync += async e =>
             {
-                Console.WriteLine("MQTT broker disconnected. Reconnecting...");
-                await _mqttClient.ConnectAsync(_mqttOptions, CancellationToken.None);
+                _logger.LogWarning("MQTT broker disconnected. Attempting to reconnect...");
+                try
+                {
+                    await _mqttClient.ConnectAsync(_mqttOptions, CancellationToken.None);
+                    _logger.LogInformation("Reconnected to MQTT broker.");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to reconnect to MQTT broker.");
+                }
             };
         }
 
@@ -57,16 +89,28 @@ namespace ArgusService.Repositories
         /// </summary>
         public async Task SubscribeToTopicAsync(string topic)
         {
+            if (string.IsNullOrEmpty(topic))
+                throw new ArgumentException("Topic cannot be null or empty.", nameof(topic));
+
             if (!_mqttClient.IsConnected)
             {
+                _logger.LogError("Cannot subscribe to topic '{Topic}' because MQTT client is not connected.", topic);
                 throw new InvalidOperationException("MQTT client is not connected.");
             }
 
-            await _mqttClient.SubscribeAsync(new MqttTopicFilterBuilder()
-                .WithTopic(topic)
-                .Build());
+            try
+            {
+                await _mqttClient.SubscribeAsync(new MqttTopicFilterBuilder()
+                    .WithTopic(topic)
+                    .Build());
 
-            Console.WriteLine($"Subscribed to topic: {topic}");
+                _logger.LogInformation("Subscribed to topic: {Topic}", topic);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to subscribe to topic: {Topic}", topic);
+                throw;
+            }
         }
 
         /// <summary>
@@ -74,19 +118,34 @@ namespace ArgusService.Repositories
         /// </summary>
         public async Task PublishToTopicAsync(string topic, string payload)
         {
+            if (string.IsNullOrEmpty(topic))
+                throw new ArgumentException("Topic cannot be null or empty.", nameof(topic));
+
+            if (string.IsNullOrEmpty(payload))
+                throw new ArgumentException("Payload cannot be null or empty.", nameof(payload));
+
             if (!_mqttClient.IsConnected)
             {
+                _logger.LogError("Cannot publish to topic '{Topic}' because MQTT client is not connected.", topic);
                 throw new InvalidOperationException("MQTT client is not connected.");
             }
 
-            var message = new MqttApplicationMessageBuilder()
-                .WithTopic(topic)
-                .WithPayload(payload)
-                .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.AtMostOnce)
-                .Build();
+            try
+            {
+                var message = new MqttApplicationMessageBuilder()
+                    .WithTopic(topic)
+                    .WithPayload(payload)
+                    .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.AtMostOnce)
+                    .Build();
 
-            await _mqttClient.PublishAsync(message);
-            Console.WriteLine($"Message published to topic: {topic}");
+                await _mqttClient.PublishAsync(message);
+                _logger.LogInformation("Message published to topic: {Topic}", topic);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to publish message to topic: {Topic}", topic);
+                throw;
+            }
         }
 
         /// <summary>
@@ -94,13 +153,25 @@ namespace ArgusService.Repositories
         /// </summary>
         public async Task UnsubscribeFromTopicAsync(string topic)
         {
+            if (string.IsNullOrEmpty(topic))
+                throw new ArgumentException("Topic cannot be null or empty.", nameof(topic));
+
             if (!_mqttClient.IsConnected)
             {
+                _logger.LogError("Cannot unsubscribe from topic '{Topic}' because MQTT client is not connected.", topic);
                 throw new InvalidOperationException("MQTT client is not connected.");
             }
 
-            await _mqttClient.UnsubscribeAsync(topic);
-            Console.WriteLine($"Unsubscribed from topic: {topic}");
+            try
+            {
+                await _mqttClient.UnsubscribeAsync(topic);
+                _logger.LogInformation("Unsubscribed from topic: {Topic}", topic);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to unsubscribe from topic: {Topic}", topic);
+                throw;
+            }
         }
     }
 }

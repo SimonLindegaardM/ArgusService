@@ -5,22 +5,27 @@ using System.Threading.Tasks;
 namespace ArgusService.Interfaces
 {
     /// <summary>
-    /// Interface for Tracker manager operations.
+    /// Interface for Tracker repository operations.
     /// </summary>
-    public interface ITrackerManager
+    public interface ITrackerRepository
     {
         /// <summary>
-        /// Registers a new Tracker device only (locks handled by Lock side).
+        /// Registers a new Tracker device (only supports deviceType = "tracker").
         /// </summary>
-        Task RegisterDeviceAsync(string deviceId, string deviceType, string attachedTrackerId = null);
+        Task RegisterDeviceAsync(string deviceId, string deviceType);
 
         /// <summary>
-        /// Links a Tracker to a specific Firebase user.
+        /// Fetches a Tracker by its ID.
         /// </summary>
-        Task LinkDeviceToUserAsync(string trackerId, string firebaseUID, string email);
+        Task<Tracker> FetchTrackerAsync(string trackerId);
 
         /// <summary>
-        /// Retrieves all devices (only trackers here).
+        /// Updates an existing Tracker (including lockState and desiredLockState).
+        /// </summary>
+        Task UpdateTrackerAsync(Tracker tracker);
+
+        /// <summary>
+        /// Retrieves all devices, i.e., Trackers.
         /// </summary>
         Task<List<Tracker>> GetAllDevicesAsync();
 
@@ -30,12 +35,12 @@ namespace ArgusService.Interfaces
         Task UpdateLockStateAsync(string trackerId, string lockState);
 
         /// <summary>
-        /// Fetches the current lock state of a Tracker.
+        /// Fetches the current lock state of a Tracker (LockState).
         /// </summary>
         Task<string> FetchLockStateAsync(string trackerId);
 
         /// <summary>
-        /// Deletes a Tracker and all associated data.
+        /// Deletes a Tracker and all associated Locations.
         /// </summary>
         Task DeleteTrackerAsync(string trackerId);
     }
