@@ -16,7 +16,8 @@ using NLog;
 using NLog.Web;
 using System.Reflection;
 using System.Text;
-using AutoMapper; // Add this
+using AutoMapper;
+using ArgusService;
 
 var logger = NLog.LogManager.Setup().LoadConfigurationFromFile("nlog.config").GetCurrentClassLogger();
 try
@@ -135,13 +136,13 @@ try
     // ---------------------------------------------
     // 7. Register AutoMapper
     // ---------------------------------------------
-    builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+    builder.Services.AddAutoMapper(typeof(MappingProfile));
 
     // ---------------------------------------------
     // 8. Register Controllers
     // ---------------------------------------------
 
-    // IMPORTANT: Registers MVC controllers with the DI container.
+    // Registers MVC controllers with the DI container.
     // Essential for routing HTTP requests to controller actions.
     builder.Services.AddControllers();
 

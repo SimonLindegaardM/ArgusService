@@ -1,9 +1,12 @@
-﻿using System;
+﻿// File: ArgusService/Managers/TrackerManager.cs
+
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using ArgusService.Interfaces;
 using ArgusService.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Data.SqlClient; // Ensure this using directive is present
 
 namespace ArgusService.Managers
 {
@@ -35,13 +38,30 @@ namespace ArgusService.Managers
         /// </summary>
         public async Task RegisterDeviceAsync(string deviceId, string deviceType, string attachedTrackerId = null)
         {
-            if (string.IsNullOrEmpty(deviceId) || string.IsNullOrEmpty(deviceType))
-                throw new ArgumentException("Device ID and Device Type cannot be null or empty.");
+            _logger.LogInformation("TrackerManager: Registering device '{DeviceId}' of type '{DeviceType}'.", deviceId, deviceType);
 
-            // This will throw an exception if deviceType == "lock"
-            await _trackerRepository.RegisterDeviceAsync(deviceId, deviceType);
+            try
+            {
+                if (string.IsNullOrEmpty(deviceId) || string.IsNullOrEmpty(deviceType))
+                {
+                    _logger.LogWarning("TrackerManager: Device ID or Device Type is null or empty.");
+                    throw new ArgumentException("Device ID and Device Type cannot be null or empty.");
+                }
 
-            _logger.LogInformation($"Device '{deviceId}' of type '{deviceType}' registered successfully.");
+                // This will throw an exception if deviceType == "lock"
+                await _trackerRepository.RegisterDeviceAsync(deviceId, deviceType);
+                _logger.LogInformation("TrackerManager: Device '{DeviceId}' of type '{DeviceType}' registered successfully.", deviceId, deviceType);
+            }
+            catch (SqlException sqlEx)
+            {
+                _logger.LogError(sqlEx, "TrackerManager: SQL Exception occurred while registering device '{DeviceId}'.", deviceId);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "TrackerManager: An error occurred while registering device '{DeviceId}'.", deviceId);
+                throw;
+            }
         }
 
         /// <summary>
@@ -49,26 +69,43 @@ namespace ArgusService.Managers
         /// </summary>
         public async Task LinkDeviceToUserAsync(string trackerId, string firebaseUID, string email)
         {
-            // Validate the user
-            var user = await _userRepository.GetUserDetailsAsync(firebaseUID);
-            if (user == null || user.Email != email)
+            _logger.LogInformation("TrackerManager: Linking Tracker '{TrackerId}' to user '{Email}'.", trackerId, email);
+
+            try
             {
-                throw new Exception($"User with FirebaseUID {firebaseUID} and email {email} not found.");
-            }
+                // Validate the user
+                var user = await _userRepository.GetUserDetailsAsync(firebaseUID);
+                if (user == null || user.Email != email)
+                {
+                    _logger.LogWarning("TrackerManager: User with FirebaseUID '{FirebaseUID}' and email '{Email}' not found.", firebaseUID, email);
+                    throw new Exception($"User with FirebaseUID '{firebaseUID}' and email '{email}' not found.");
+                }
 
-            // Fetch the tracker
-            var tracker = await _trackerRepository.FetchTrackerAsync(trackerId);
-            if (tracker == null)
+                // Fetch the tracker
+                var tracker = await _trackerRepository.FetchTrackerAsync(trackerId);
+                if (tracker == null)
+                {
+                    _logger.LogWarning("TrackerManager: Tracker with ID '{TrackerId}' not found.", trackerId);
+                    throw new Exception($"Tracker with ID '{trackerId}' not found.");
+                }
+
+                // Link tracker to user
+                tracker.FirebaseUID = firebaseUID;
+                tracker.Email = email;
+                await _trackerRepository.UpdateTrackerAsync(tracker);
+
+                _logger.LogInformation("TrackerManager: Tracker '{TrackerId}' linked to user '{Email}' successfully.", trackerId, email);
+            }
+            catch (SqlException sqlEx)
             {
-                throw new Exception($"Tracker with ID {trackerId} not found.");
+                _logger.LogError(sqlEx, "TrackerManager: SQL Exception occurred while linking Tracker '{TrackerId}' to user '{Email}'.", trackerId, email);
+                throw;
             }
-
-            // Link tracker to user
-            tracker.FirebaseUID = firebaseUID;
-            tracker.Email = email;
-            await _trackerRepository.UpdateTrackerAsync(tracker);
-
-            _logger.LogInformation($"Tracker '{trackerId}' linked to user '{email}'.");
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "TrackerManager: An error occurred while linking Tracker '{TrackerId}' to user '{Email}'.", trackerId, email);
+                throw;
+            }
         }
 
         /// <summary>
@@ -76,18 +113,31 @@ namespace ArgusService.Managers
         /// </summary>
         public async Task<List<Tracker>> GetAllDevicesAsync()
         {
-            _logger.LogInformation("Fetching all devices.");
+            _logger.LogInformation("TrackerManager: Fetching all Tracker devices.");
 
-            var devices = await _trackerRepository.GetAllDevicesAsync();
-
-            if (devices == null)
+            try
             {
-                _logger.LogError("Devices list is null.");
-                return new List<Tracker>(); // Return empty list instead of null
-            }
+                var devices = await _trackerRepository.GetAllDevicesAsync();
 
-            _logger.LogInformation($"Fetched {devices.Count} devices.");
-            return devices;
+                if (devices == null)
+                {
+                    _logger.LogError("TrackerManager: Devices list is null.");
+                    return new List<Tracker>(); // Return empty list instead of null
+                }
+
+                _logger.LogInformation("TrackerManager: Fetched {Count} devices.", devices.Count);
+                return devices;
+            }
+            catch (SqlException sqlEx)
+            {
+                _logger.LogError(sqlEx, "TrackerManager: SQL Exception occurred while fetching all devices.");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "TrackerManager: An error occurred while fetching all devices.");
+                throw;
+            }
         }
 
         /// <summary>
@@ -95,15 +145,35 @@ namespace ArgusService.Managers
         /// </summary>
         public async Task UpdateLockStateAsync(string trackerId, string lockState)
         {
-            if (string.IsNullOrEmpty(trackerId))
-                throw new ArgumentException("Tracker ID cannot be null or empty.");
+            _logger.LogInformation("TrackerManager: Updating lock state for Tracker '{TrackerId}' to '{LockState}'.", trackerId, lockState);
 
-            if (string.IsNullOrEmpty(lockState) || (lockState.ToLower() != "locked" && lockState.ToLower() != "unlocked"))
-                throw new ArgumentException("LockState must be 'locked' or 'unlocked'.");
+            try
+            {
+                if (string.IsNullOrEmpty(trackerId))
+                {
+                    _logger.LogWarning("TrackerManager: Tracker ID is null or empty.");
+                    throw new ArgumentException("Tracker ID cannot be null or empty.");
+                }
 
-            await _trackerRepository.UpdateLockStateAsync(trackerId, lockState);
+                if (string.IsNullOrEmpty(lockState) || (lockState.ToLower() != "locked" && lockState.ToLower() != "unlocked"))
+                {
+                    _logger.LogWarning("TrackerManager: Invalid LockState '{LockState}' provided for Tracker '{TrackerId}'.", lockState, trackerId);
+                    throw new ArgumentException("LockState must be 'locked' or 'unlocked'.");
+                }
 
-            _logger.LogInformation($"Tracker '{trackerId}' lock state updated to '{lockState}'.");
+                await _trackerRepository.UpdateLockStateAsync(trackerId, lockState);
+                _logger.LogInformation("TrackerManager: Tracker '{TrackerId}' lock state updated to '{LockState}'.", trackerId, lockState);
+            }
+            catch (SqlException sqlEx)
+            {
+                _logger.LogError(sqlEx, "TrackerManager: SQL Exception occurred while updating lock state for Tracker '{TrackerId}'.", trackerId);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "TrackerManager: An error occurred while updating lock state for Tracker '{TrackerId}'.", trackerId);
+                throw;
+            }
         }
 
         /// <summary>
@@ -111,17 +181,36 @@ namespace ArgusService.Managers
         /// </summary>
         public async Task<string> FetchLockStateAsync(string trackerId)
         {
-            if (string.IsNullOrEmpty(trackerId))
-                throw new ArgumentException("Tracker ID cannot be null or empty.");
+            _logger.LogInformation("TrackerManager: Fetching lock state for Tracker '{TrackerId}'.", trackerId);
 
-            var lockState = await _trackerRepository.FetchLockStateAsync(trackerId);
-
-            if (lockState == null)
+            try
             {
-                _logger.LogWarning($"Lock state for Tracker '{trackerId}' is null.");
-            }
+                if (string.IsNullOrEmpty(trackerId))
+                {
+                    _logger.LogWarning("TrackerManager: Tracker ID is null or empty.");
+                    throw new ArgumentException("Tracker ID cannot be null or empty.");
+                }
 
-            return lockState;
+                var lockState = await _trackerRepository.FetchLockStateAsync(trackerId);
+
+                if (lockState == null)
+                {
+                    _logger.LogWarning("TrackerManager: Lock state for Tracker '{TrackerId}' is null.", trackerId);
+                }
+
+                _logger.LogInformation("TrackerManager: Tracker '{TrackerId}' has lock state '{LockState}'.", trackerId, lockState);
+                return lockState;
+            }
+            catch (SqlException sqlEx)
+            {
+                _logger.LogError(sqlEx, "TrackerManager: SQL Exception occurred while fetching lock state for Tracker '{TrackerId}'.", trackerId);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "TrackerManager: An error occurred while fetching lock state for Tracker '{TrackerId}'.", trackerId);
+                throw;
+            }
         }
 
         /// <summary>
@@ -129,12 +218,29 @@ namespace ArgusService.Managers
         /// </summary>
         public async Task DeleteTrackerAsync(string trackerId)
         {
-            if (string.IsNullOrEmpty(trackerId))
-                throw new ArgumentException("Tracker ID cannot be null or empty.");
+            _logger.LogInformation("TrackerManager: Deleting Tracker '{TrackerId}' and all associated data.", trackerId);
 
-            await _trackerRepository.DeleteTrackerAsync(trackerId);
+            try
+            {
+                if (string.IsNullOrEmpty(trackerId))
+                {
+                    _logger.LogWarning("TrackerManager: Tracker ID is null or empty.");
+                    throw new ArgumentException("Tracker ID cannot be null or empty.");
+                }
 
-            _logger.LogInformation($"Tracker '{trackerId}' and all associated data deleted successfully.");
+                await _trackerRepository.DeleteTrackerAsync(trackerId);
+                _logger.LogInformation("TrackerManager: Tracker '{TrackerId}' and all associated data deleted successfully.", trackerId);
+            }
+            catch (SqlException sqlEx)
+            {
+                _logger.LogError(sqlEx, "TrackerManager: SQL Exception occurred while deleting Tracker '{TrackerId}'.", trackerId);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "TrackerManager: An error occurred while deleting Tracker '{TrackerId}'.", trackerId);
+                throw;
+            }
         }
     }
 }

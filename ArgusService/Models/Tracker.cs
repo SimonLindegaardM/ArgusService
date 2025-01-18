@@ -1,4 +1,6 @@
-﻿using System;
+﻿// File: ArgusService/Models/Tracker.cs
+
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -21,9 +23,8 @@ namespace ArgusService.Models
         /// <summary>
         /// The Firebase User ID of the tracker owner.
         /// </summary>
-        [Required]
         [StringLength(128, MinimumLength = 1, ErrorMessage = "FirebaseUID must be between 1 and 128 characters.")]
-        public string FirebaseUID { get; set; }
+        public string? FirebaseUID { get; set; } // Made nullable
 
         /// <summary>
         /// Owner's email address for reference.
@@ -102,7 +103,12 @@ namespace ArgusService.Models
         /// <summary>
         /// Collection of locations associated with this tracker.
         /// </summary>
-        public DateTime CreatedAt { get; set; } // Added Property
         public ICollection<Location> Locations { get; set; } = new List<Location>();
+
+        /// <summary>
+        /// Time when the Tracker was created.
+        /// </summary>
+        [Required]
+        public DateTime CreatedAt { get; set; } // Ensured it's set in the repository
     }
 }

@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ArgusService.DTOs;
-using ArgusService.Interfaces;   // ITrackerManager interface
+using ArgusService.Interfaces;
 using Microsoft.Extensions.Logging;
 
 namespace ArgusService.Controllers
@@ -41,7 +41,7 @@ namespace ArgusService.Controllers
         /// }
         /// </summary>
         [HttpPost]
-        ///[Authorize(Roles = "admin")]
+        // [Authorize(Roles = "admin")]
         public async Task<IActionResult> RegisterTracker([FromBody] RegisterTrackerRequestDto request)
         {
             if (!ModelState.IsValid)
@@ -52,7 +52,6 @@ namespace ArgusService.Controllers
 
             try
             {
-                // Corrected: Passing only up to 3 arguments as defined in ITrackerManager
                 await _trackerManager.RegisterDeviceAsync(request.DeviceId, request.DeviceType, null);
                 _logger.LogInformation("Tracker '{DeviceId}' registered successfully.", request.DeviceId);
                 return CreatedAtAction(nameof(RegisterTracker), new { request.DeviceId }, new { Message = "Tracker registered successfully." });
@@ -84,7 +83,7 @@ namespace ArgusService.Controllers
         /// }
         /// </summary>
         [HttpPost("link-device")]
-        ///[Authorize(Roles = "admin")]
+        // [Authorize(Roles = "admin")]
         public async Task<IActionResult> LinkDevice([FromBody] LinkDeviceRequestDto request)
         {
             if (!ModelState.IsValid)
@@ -110,7 +109,7 @@ namespace ArgusService.Controllers
         /// Fetches all Trackers in the system.
         /// </summary>
         [HttpGet]
-        ///[Authorize(Roles = "admin,user")]
+        // [Authorize(Roles = "admin,user")]
         public async Task<IActionResult> GetAllTrackers()
         {
             try
@@ -132,7 +131,7 @@ namespace ArgusService.Controllers
         /// { "desiredLockState": "locked" }
         /// </summary>
         [HttpPost("{trackerId}/lock-state")]
-        ///[Authorize(Roles = "admin,user")]
+        // [Authorize(Roles = "admin,user")]
         public async Task<IActionResult> UpdateLockState(string trackerId, [FromBody] UpdateTrackerLockStateRequestDto request)
         {
             if (!ModelState.IsValid)
@@ -163,7 +162,7 @@ namespace ArgusService.Controllers
         /// Retrieves the current lock state of a Tracker.
         /// </summary>
         [HttpGet("{trackerId}/lock-state")]
-        ///[Authorize(Roles = "admin,user")]
+        // [Authorize(Roles = "admin,user")]
         public async Task<IActionResult> GetLockState(string trackerId)
         {
             if (string.IsNullOrEmpty(trackerId))
@@ -195,7 +194,7 @@ namespace ArgusService.Controllers
         /// Deletes a Tracker and all associated data.
         /// </summary>
         [HttpDelete("{trackerId}")]
-        ///[Authorize(Roles = "admin")]
+        // [Authorize(Roles = "admin")]
         public async Task<IActionResult> DeleteTracker(string trackerId)
         {
             if (string.IsNullOrEmpty(trackerId))

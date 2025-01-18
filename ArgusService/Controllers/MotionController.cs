@@ -36,7 +36,7 @@ namespace ArgusService.Controllers
         /// }
         /// </summary>
         [HttpPost]
-        [Authorize(Roles = "admin,user")]
+        ///[Authorize(Roles = "admin,user")]
         public async Task<IActionResult> AddMotionEvent([FromBody] MotionRequestDto dto)
         {
             if (!ModelState.IsValid)
@@ -71,7 +71,7 @@ namespace ArgusService.Controllers
         /// Example GET: /api/motions/{trackerId}
         /// </summary>
         [HttpGet("{trackerId}")]
-        [Authorize(Roles = "admin,user")]
+        ///[Authorize(Roles = "admin,user")]
         public async Task<IActionResult> GetMotionEvents(string trackerId)
         {
             if (string.IsNullOrEmpty(trackerId))

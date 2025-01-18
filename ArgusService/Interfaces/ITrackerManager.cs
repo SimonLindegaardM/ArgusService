@@ -1,4 +1,6 @@
-﻿using ArgusService.Models;
+﻿// File: ArgusService/Interfaces/ITrackerManager.cs
+
+using ArgusService.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
