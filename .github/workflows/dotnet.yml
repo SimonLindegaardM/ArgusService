@@ -3,10 +3,10 @@ name: CI Pipeline
 on:
   push:
     branches:
-      - main
+      - master
   pull_request:
     branches:
-      - main
+      - master
 
 jobs:
   build-and-test:
@@ -25,12 +25,12 @@ jobs:
 
       # Restore dependencies
       - name: Restore dependencies
-        run: dotnet restore
+        run: dotnet restore ArgusService.sln
 
       # Build the project
       - name: Build the project
-        run: dotnet build --no-restore --configuration Release
+        run: dotnet build ArgusService.sln --configuration Release
 
       # Run tests
       - name: Run tests
-        run: dotnet test --no-build --verbosity normal
+        run: dotnet test ArgusService-UnitTest/ArgusService-UnitTest.csproj --configuration Release
