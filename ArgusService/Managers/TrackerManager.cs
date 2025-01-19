@@ -5,8 +5,8 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using ArgusService.Interfaces;
 using ArgusService.Models;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
-using Microsoft.Data.SqlClient; // Ensure this using directive is present
 
 namespace ArgusService.Managers
 {
@@ -18,17 +18,20 @@ namespace ArgusService.Managers
         private readonly ITrackerRepository _trackerRepository;
         private readonly IUserRepository _userRepository;
         private readonly ILocationRepository _locationRepository;
+        private readonly INotificationManager _notificationManager; // Added
         private readonly ILogger<TrackerManager> _logger;
 
         public TrackerManager(
             ITrackerRepository trackerRepository,
             IUserRepository userRepository,
             ILocationRepository locationRepository,
+            INotificationManager notificationManager, // Added
             ILogger<TrackerManager> logger)
         {
             _trackerRepository = trackerRepository;
             _userRepository = userRepository;
             _locationRepository = locationRepository;
+            _notificationManager = notificationManager; // Added
             _logger = logger;
         }
 
@@ -163,6 +166,22 @@ namespace ArgusService.Managers
 
                 await _trackerRepository.UpdateLockStateAsync(trackerId, lockState);
                 _logger.LogInformation("TrackerManager: Tracker '{TrackerId}' lock state updated to '{LockState}'.", trackerId, lockState);
+
+                // New Logic: Trigger notification for lock state change
+                var notificationMessage = lockState.Equals("locked", StringComparison.OrdinalIgnoreCase)
+                    ? $"Tracker {trackerId} has been locked."
+                    : $"Tracker {trackerId} has been unlocked.";
+
+                var notification = new Notification
+                {
+                    TrackerId = trackerId,
+                    Type = "LockStateChanged",
+                    Message = notificationMessage,
+                    Timestamp = DateTime.UtcNow
+                };
+
+                await _notificationManager.CreateNotificationAsync(notification);
+                _logger.LogInformation("Notification triggered for Tracker '{TrackerId}' due to lock state change.", trackerId);
             }
             catch (SqlException sqlEx)
             {

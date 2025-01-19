@@ -3,40 +3,41 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ArgusService.DTOs;
-using ArgusService.Interfaces;   // IMqttRepository interface
+using ArgusService.Interfaces;
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
-using AutoMapper; // Add this
-using ArgusService.Models; // Ensure this is included for the MqttMessage model
+using AutoMapper;
+using ArgusService.Models;
 
 namespace ArgusService.Controllers
 {
+    /// <summary>
+    /// Controller for managing MQTT operations.
+    /// </summary>
     [ApiController]
     [Route("api/mqtt")]
     public class MqttController : ControllerBase
     {
         private readonly IMqttRepository _mqttRepository;
         private readonly ILogger<MqttController> _logger;
-        private readonly IMapper _mapper; // Inject IMapper
+        private readonly IMapper _mapper;
 
         public MqttController(IMqttRepository mqttRepository, ILogger<MqttController> logger, IMapper mapper)
         {
             _mqttRepository = mqttRepository;
             _logger = logger;
-            _mapper = mapper; // Assign IMapper
+            _mapper = mapper;
         }
 
         /// <summary>
         /// Publishes an MQTT message.
-        /// Example body:
-        /// {
-        ///   "trackerId": "Tracker001",
-        ///   "topicType": "telemetry",
-        ///   "payload": { "data": "sample" }
-        /// }
         /// </summary>
+        /// <param name="request">The MQTT message details.</param>
+        /// <returns>Result of the publish operation.</returns>
+        /// <response code="200">MQTT message published successfully.</response>
+        /// <response code="500">If an unexpected error occurs.</response>
         [HttpPost("publish")]
-        [Authorize(Roles = "admin,user")]
+       // [Authorize(Roles = "admin,user")]
         public async Task<IActionResult> PublishMessage([FromBody] MqttPublishRequestDto request)
         {
             if (!ModelState.IsValid)

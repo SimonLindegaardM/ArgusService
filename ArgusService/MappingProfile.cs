@@ -15,10 +15,10 @@ namespace ArgusService
             // 1. RegisterTrackerRequestDto -> Tracker
             // ---------------------------------------------
             CreateMap<RegisterTrackerRequestDto, Tracker>()
-                .ForMember(dest => dest.TrackerId, opt => opt.MapFrom(src => src.DeviceId))
+                .ForMember(dest => dest.TrackerId, opt => opt.MapFrom(src => src.TrackerId))
                 
                 .ForMember(dest => dest.MqttUsername, opt => opt.MapFrom(src => src.MqttUsername))
-                .ForMember(dest => dest.MqttPassword, opt => opt.MapFrom(src => src.MqttPassword))
+               // .ForMember(dest => dest.MqttPassword, opt => opt.MapFrom(src => src.MqttPassword))
                // .ForMember(dest => dest.Psk, opt => opt.MapFrom(src => src.Psk))
                 .ForMember(dest => dest.BrokerUrl, opt => opt.MapFrom(src => src.BrokerUrl))
                 .ForMember(dest => dest.Port, opt => opt.MapFrom(src => src.Port))

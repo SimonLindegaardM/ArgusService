@@ -3,38 +3,40 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ArgusService.DTOs;
-using ArgusService.Interfaces;   // IMotionManager interface
+using ArgusService.Interfaces;
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
-using AutoMapper; // Add this
-using ArgusService.Models; // Ensure this is included for the Motion model
+using AutoMapper;
+using ArgusService.Models;
 
 namespace ArgusService.Controllers
 {
+    /// <summary>
+    /// Controller for managing Motion events.
+    /// </summary>
     [ApiController]
     [Route("api/motions")]
     public class MotionsController : ControllerBase
     {
         private readonly IMotionManager _motionManager;
         private readonly ILogger<MotionsController> _logger;
-        private readonly IMapper _mapper; // Inject IMapper
+        private readonly IMapper _mapper;
 
         public MotionsController(IMotionManager motionManager, ILogger<MotionsController> logger, IMapper mapper)
         {
             _motionManager = motionManager;
             _logger = logger;
-            _mapper = mapper; // Assign IMapper
+            _mapper = mapper;
         }
 
         /// <summary>
         /// Saves motion event data.
-        /// Example body:
-        /// {
-        ///   "trackerId": "Tracker001",
-        ///   "motionDetected": true,
-        ///   "timestamp": "2025-01-17T06:00:00Z"
-        /// }
         /// </summary>
+        /// <param name="dto">The motion event details.</param>
+        /// <returns>Result of the save operation.</returns>
+        /// <response code="200">Motion event added successfully.</response>
+        /// <response code="400">If the input is invalid.</response>
+        /// <response code="500">If an unexpected error occurs.</response>
         [HttpPost]
         ///[Authorize(Roles = "admin,user")]
         public async Task<IActionResult> AddMotionEvent([FromBody] MotionRequestDto dto)
@@ -68,8 +70,12 @@ namespace ArgusService.Controllers
 
         /// <summary>
         /// Fetches motion detection events for a Tracker.
-        /// Example GET: /api/motions/{trackerId}
         /// </summary>
+        /// <param name="trackerId">The ID of the Tracker.</param>
+        /// <returns>List of motion events.</returns>
+        /// <response code="200">Returns the list of motion events.</response>
+        /// <response code="400">If the input is invalid.</response>
+        /// <response code="500">If an unexpected error occurs.</response>
         [HttpGet("{trackerId}")]
         ///[Authorize(Roles = "admin,user")]
         public async Task<IActionResult> GetMotionEvents(string trackerId)
@@ -82,7 +88,6 @@ namespace ArgusService.Controllers
 
             try
             {
-                // Ensure the method name matches the interface
                 var motionEvents = await _motionManager.FetchMotionEventsAsync(trackerId);
                 _logger.LogInformation("Fetched motion events for Tracker '{TrackerId}'.", trackerId);
                 return Ok(motionEvents);

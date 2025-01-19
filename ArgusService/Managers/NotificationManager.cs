@@ -1,8 +1,11 @@
-﻿using ArgusService.Interfaces;
-using ArgusService.Models;
+﻿// File: ArgusService/Managers/NotificationManager.cs
+
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using ArgusService.Interfaces;
+using ArgusService.Models;
+using Microsoft.Extensions.Logging;
 
 namespace ArgusService.Managers
 {
@@ -12,14 +15,12 @@ namespace ArgusService.Managers
     public class NotificationManager : INotificationManager
     {
         private readonly INotificationRepository _notificationRepository;
+        private readonly ILogger<NotificationManager> _logger;
 
-        /// <summary>
-        /// Initializes a new instance of NotificationManager.
-        /// </summary>
-        /// <param name="notificationRepository">The notification repository.</param>
-        public NotificationManager(INotificationRepository notificationRepository)
+        public NotificationManager(INotificationRepository notificationRepository, ILogger<NotificationManager> logger)
         {
             _notificationRepository = notificationRepository;
+            _logger = logger;
         }
 
         /// <summary>
@@ -30,9 +31,9 @@ namespace ArgusService.Managers
             if (notification == null ||
                 string.IsNullOrEmpty(notification.Type) ||
                 string.IsNullOrEmpty(notification.Message) ||
-                string.IsNullOrEmpty(notification.UserId))
+                string.IsNullOrEmpty(notification.TrackerId))
             {
-                throw new ArgumentException("Invalid notification data. Type, Message, and UserId are required.");
+                throw new ArgumentException("Invalid notification data. Type, Message, and TrackerId are required.");
             }
 
             // Optionally validate notification.Type matches known types
@@ -40,19 +41,25 @@ namespace ArgusService.Managers
 
             notification.Timestamp = DateTime.UtcNow;
             await _notificationRepository.AddNotificationAsync(notification);
+            _logger.LogInformation("Notification '{NotificationType}' created for Tracker '{TrackerId}'.", notification.Type, notification.TrackerId);
         }
 
         /// <summary>
-        /// Fetches all notifications for a specific user.
+        /// Retrieves all notifications for a specific Tracker.
         /// </summary>
-        public async Task<List<Notification>> FetchNotificationsAsync(string userId)
+        public async Task<List<Notification>> GetNotificationsByTrackerIdAsync(string trackerId)
         {
-            if (string.IsNullOrEmpty(userId))
+            if (string.IsNullOrEmpty(trackerId))
             {
-                throw new ArgumentException("User ID cannot be null or empty.");
+                throw new ArgumentException("Tracker ID cannot be null or empty.", nameof(trackerId));
             }
 
-            return await _notificationRepository.GetNotificationsByUserIdAsync(userId);
+            _logger.LogInformation("Fetching notifications for Tracker '{TrackerId}'.", trackerId);
+
+            var notifications = await _notificationRepository.GetNotificationsByTrackerIdAsync(trackerId);
+            _logger.LogInformation("Fetched {Count} notifications for Tracker '{TrackerId}'.", notifications.Count, trackerId);
+
+            return notifications;
         }
     }
 }

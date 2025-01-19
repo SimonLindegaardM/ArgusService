@@ -9,6 +9,10 @@ namespace ArgusService.DTOs
     /// </summary>
     public class UpdateTrackerLockStateRequestDto
     {
+        /// <summary>
+        /// Desired lock state for the Tracker.
+        /// </summary>
+        /// <example>locked</example>
         [Required]
         [RegularExpression("^(locked|unlocked)$", ErrorMessage = "DesiredLockState must be either 'locked' or 'unlocked'.")]
         public string DesiredLockState { get; set; }

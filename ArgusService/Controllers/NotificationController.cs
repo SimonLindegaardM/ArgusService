@@ -3,39 +3,40 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ArgusService.DTOs;
-using ArgusService.Interfaces;   // INotificationRepository interface
+using ArgusService.Interfaces;
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
-using AutoMapper; // Add this
-using ArgusService.Models; // Ensure this is included for the Notification model
+using AutoMapper;
+using ArgusService.Models;
 
 namespace ArgusService.Controllers
 {
+    /// <summary>
+    /// Controller for managing Notifications.
+    /// </summary>
     [ApiController]
     [Route("api/notifications")]
     public class NotificationsController : ControllerBase
     {
         private readonly INotificationRepository _notificationRepository;
         private readonly ILogger<NotificationsController> _logger;
-        private readonly IMapper _mapper; // Inject IMapper
+        private readonly IMapper _mapper;
 
         public NotificationsController(INotificationRepository notificationRepository, ILogger<NotificationsController> logger, IMapper mapper)
         {
             _notificationRepository = notificationRepository;
             _logger = logger;
-            _mapper = mapper; // Assign IMapper
+            _mapper = mapper;
         }
 
         /// <summary>
         /// Creates a new notification.
-        /// Example body:
-        /// {
-        ///   "trackerId": "Tracker001",
-        ///   "type": "motion",
-        ///   "message": "Motion detected on tracker.",
-        ///   "timestamp": "2025-01-17T06:00:00Z"
-        /// }
         /// </summary>
+        /// <param name="dto">The notification details.</param>
+        /// <returns>Result of the creation operation.</returns>
+        /// <response code="200">Notification added successfully.</response>
+        /// <response code="400">If the input is invalid.</response>
+        /// <response code="500">If an unexpected error occurs.</response>
         [HttpPost]
         [Authorize(Roles = "admin,user")]
         public async Task<IActionResult> AddNotification([FromBody] NotificationRequestDto dto)
@@ -69,8 +70,12 @@ namespace ArgusService.Controllers
 
         /// <summary>
         /// Fetches all notifications for a specific user.
-        /// Example GET: /api/notifications/{userId}
         /// </summary>
+        /// <param name="userId">The ID of the user.</param>
+        /// <returns>List of notifications.</returns>
+        /// <response code="200">Returns the list of notifications.</response>
+        /// <response code="400">If the input is invalid.</response>
+        /// <response code="500">If an unexpected error occurs.</response>
         [HttpGet("{userId}")]
         [Authorize(Roles = "admin,user")]
         public async Task<IActionResult> GetNotificationsByUserId(string userId)
@@ -83,7 +88,6 @@ namespace ArgusService.Controllers
 
             try
             {
-                // Assuming the correct method name is GetNotificationsByUserIdAsync
                 var notifications = await _notificationRepository.GetNotificationsByUserIdAsync(userId);
                 _logger.LogInformation("Fetched notifications for User '{UserId}'.", userId);
                 return Ok(notifications);

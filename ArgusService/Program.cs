@@ -199,7 +199,8 @@ try
     {
         options.AddPolicy("CorsPolicy", policyBuilder =>
         {
-            policyBuilder.WithOrigins("https://yourdomain.com") // Replace with your client domain
+            policyBuilder
+                         .AllowAnyOrigin()
                          .AllowAnyMethod()
                          .AllowAnyHeader();
         });

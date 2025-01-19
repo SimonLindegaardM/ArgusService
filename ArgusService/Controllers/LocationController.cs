@@ -3,39 +3,40 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ArgusService.DTOs;
-using ArgusService.Interfaces;   // ILocationManager interface
+using ArgusService.Interfaces;
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
-using AutoMapper; // Add this
-using ArgusService.Models; // Ensure this is included for the Location model
+using AutoMapper;
+using ArgusService.Models;
 
 namespace ArgusService.Controllers
 {
+    /// <summary>
+    /// Controller for managing Location data.
+    /// </summary>
     [ApiController]
     [Route("api/locations")]
     public class LocationsController : ControllerBase
     {
         private readonly ILocationManager _locationManager;
         private readonly ILogger<LocationsController> _logger;
-        private readonly IMapper _mapper; // Inject IMapper
+        private readonly IMapper _mapper;
 
         public LocationsController(ILocationManager locationManager, ILogger<LocationsController> logger, IMapper mapper)
         {
             _locationManager = locationManager;
             _logger = logger;
-            _mapper = mapper; // Assign IMapper
+            _mapper = mapper;
         }
 
         /// <summary>
         /// Saves location data.
-        /// Example body:
-        /// {
-        ///   "trackerId": "Tracker001",
-        ///   "latitude": 40.7128,
-        ///   "longitude": -74.0060,
-        ///   "timestamp": "2025-01-17T06:00:00Z"
-        /// }
         /// </summary>
+        /// <param name="dto">The location details.</param>
+        /// <returns>Result of the save operation.</returns>
+        /// <response code="200">Location added successfully.</response>
+        /// <response code="400">If the input is invalid.</response>
+        /// <response code="500">If an unexpected error occurs.</response>
         [HttpPost]
         [Authorize(Roles = "admin,user")]
         public async Task<IActionResult> AddLocation([FromBody] LocationRequestDto dto)
@@ -64,8 +65,12 @@ namespace ArgusService.Controllers
 
         /// <summary>
         /// Fetches location history for a tracker.
-        /// Example GET: /api/locations/{trackerId}
         /// </summary>
+        /// <param name="trackerId">The ID of the Tracker.</param>
+        /// <returns>List of location records.</returns>
+        /// <response code="200">Returns the list of locations.</response>
+        /// <response code="400">If the input is invalid.</response>
+        /// <response code="500">If an unexpected error occurs.</response>
         [HttpGet("{trackerId}")]
         [Authorize(Roles = "admin,user")]
         public async Task<IActionResult> GetLocationHistory(string trackerId)
@@ -96,8 +101,14 @@ namespace ArgusService.Controllers
 
         /// <summary>
         /// Exports location history in CSV or PDF format.
-        /// Example GET: /api/locations/export/{trackerId}?format=csv
         /// </summary>
+        /// <param name="trackerId">The ID of the Tracker.</param>
+        /// <param name="format">The format to export (csv or pdf).</param>
+        /// <returns>Exported file.</returns>
+        /// <response code="200">Returns the exported file.</response>
+        /// <response code="400">If the input is invalid.</response>
+        /// <response code="501">If the export format is not implemented.</response>
+        /// <response code="500">If an unexpected error occurs.</response>
         [HttpGet("export/{trackerId}")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> ExportLocationHistory(string trackerId, [FromQuery] string format)

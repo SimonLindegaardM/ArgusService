@@ -8,6 +8,7 @@ using ArgusService.DTOs;
 using ArgusService.Interfaces;
 using Microsoft.Extensions.Logging;
 
+
 namespace ArgusService.Controllers
 {
     /// <summary>
@@ -28,20 +29,12 @@ namespace ArgusService.Controllers
 
         /// <summary>
         /// Registers a new Tracker device.
-        /// Example body:
-        /// {
-        ///   "deviceId": "Tracker001",
-        ///   "deviceType": "Tracker",
-        ///   "mqttUsername": "mqttUser",
-        ///   "mqttPassword": "mqttPass",
-        ///   "psk": "securePSK",
-        ///   "brokerUrl": "http://broker.example.com",
-        ///   "port": 1883,
-        ///   "createdAt": "2025-01-17T06:00:00Z"
-        /// }
         /// </summary>
-        [HttpPost]
-        // [Authorize(Roles = "admin")]
+        /// <param name="request">The Tracker registration details.</param>
+        /// <returns>A newly created Tracker.</returns>
+        /// <response code="201">Tracker registered successfully.</response>
+        /// <response code="400">If the input is invalid.</response>
+        [HttpPost("register")]
         public async Task<IActionResult> RegisterTracker([FromBody] RegisterTrackerRequestDto request)
         {
             if (!ModelState.IsValid)
@@ -52,9 +45,9 @@ namespace ArgusService.Controllers
 
             try
             {
-                await _trackerManager.RegisterDeviceAsync(request.DeviceId, request.DeviceType, null);
-                _logger.LogInformation("Tracker '{DeviceId}' registered successfully.", request.DeviceId);
-                return CreatedAtAction(nameof(RegisterTracker), new { request.DeviceId }, new { Message = "Tracker registered successfully." });
+                await _trackerManager.RegisterDeviceAsync(request.TrackerId, request.DeviceType, null);
+                _logger.LogInformation("Tracker '{DeviceId}' registered successfully.", request.TrackerId);
+                return CreatedAtAction(nameof(RegisterTracker), new { request.TrackerId }, new { Message = "Tracker registered successfully." });
             }
             catch (InvalidOperationException invOpEx)
             {
@@ -75,15 +68,13 @@ namespace ArgusService.Controllers
 
         /// <summary>
         /// Links a Tracker to a user account.
-        /// Example body:
-        /// {
-        ///   "trackerId": "Tracker001",
-        ///   "firebaseUID": "User123",
-        ///   "email": "user@example.com"
-        /// }
         /// </summary>
-        [HttpPost("link-device")]
-        // [Authorize(Roles = "admin")]
+        /// <param name="request">Details for linking the Tracker to a user.</param>
+        /// <returns>Result of the linking operation.</returns>
+        /// <response code="200">Tracker linked successfully.</response>
+        /// <response code="400">If the input is invalid.</response>
+        /// <response code="500">If an unexpected error occurs.</response>
+        [HttpPost("link")]
         public async Task<IActionResult> LinkDevice([FromBody] LinkDeviceRequestDto request)
         {
             if (!ModelState.IsValid)
@@ -108,8 +99,10 @@ namespace ArgusService.Controllers
         /// <summary>
         /// Fetches all Trackers in the system.
         /// </summary>
-        [HttpGet]
-        // [Authorize(Roles = "admin,user")]
+        /// <returns>List of all Trackers.</returns>
+        /// <response code="200">Returns the list of Trackers.</response>
+        /// <response code="500">If an unexpected error occurs.</response>
+        [HttpGet("devices")]
         public async Task<IActionResult> GetAllTrackers()
         {
             try
@@ -127,11 +120,14 @@ namespace ArgusService.Controllers
 
         /// <summary>
         /// Updates the desired lock state of a Tracker.
-        /// Example body:
-        /// { "desiredLockState": "locked" }
         /// </summary>
+        /// <param name="trackerId">The ID of the Tracker to update.</param>
+        /// <param name="request">The desired lock state.</param>
+        /// <returns>Result of the update operation.</returns>
+        /// <response code="200">Lock state updated successfully.</response>
+        /// <response code="400">If the input is invalid.</response>
+        /// <response code="500">If an unexpected error occurs.</response>
         [HttpPost("{trackerId}/lock-state")]
-        // [Authorize(Roles = "admin,user")]
         public async Task<IActionResult> UpdateLockState(string trackerId, [FromBody] UpdateTrackerLockStateRequestDto request)
         {
             if (!ModelState.IsValid)
@@ -161,8 +157,12 @@ namespace ArgusService.Controllers
         /// <summary>
         /// Retrieves the current lock state of a Tracker.
         /// </summary>
+        /// <param name="trackerId">The ID of the Tracker.</param>
+        /// <returns>The current lock state.</returns>
+        /// <response code="200">Returns the lock state.</response>
+        /// <response code="404">If the Tracker is not found.</response>
+        /// <response code="500">If an unexpected error occurs.</response>
         [HttpGet("{trackerId}/lock-state")]
-        // [Authorize(Roles = "admin,user")]
         public async Task<IActionResult> GetLockState(string trackerId)
         {
             if (string.IsNullOrEmpty(trackerId))
@@ -193,8 +193,13 @@ namespace ArgusService.Controllers
         /// <summary>
         /// Deletes a Tracker and all associated data.
         /// </summary>
+        /// <param name="trackerId">The ID of the Tracker to delete.</param>
+        /// <returns>Result of the deletion operation.</returns>
+        /// <response code="200">Tracker deleted successfully.</response>
+        /// <response code="400">If the input is invalid.</response>
+        /// <response code="404">If the Tracker is not found.</response>
+        /// <response code="500">If an unexpected error occurs.</response>
         [HttpDelete("{trackerId}")]
-        // [Authorize(Roles = "admin")]
         public async Task<IActionResult> DeleteTracker(string trackerId)
         {
             if (string.IsNullOrEmpty(trackerId))

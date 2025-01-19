@@ -15,11 +15,19 @@ namespace ArgusService.Managers
     public class MotionManager : IMotionManager
     {
         private readonly IMotionRepository _motionRepository;
+        private readonly ITrackerRepository _trackerRepository; // Added
+        private readonly INotificationManager _notificationManager; // Added
         private readonly ILogger<MotionManager> _logger;
 
-        public MotionManager(IMotionRepository motionRepository, ILogger<MotionManager> logger)
+        public MotionManager(
+            IMotionRepository motionRepository,
+            ITrackerRepository trackerRepository, // Added
+            INotificationManager notificationManager, // Added
+            ILogger<MotionManager> logger)
         {
             _motionRepository = motionRepository;
+            _trackerRepository = trackerRepository; // Added
+            _notificationManager = notificationManager; // Added
             _logger = logger;
         }
 
@@ -41,6 +49,25 @@ namespace ArgusService.Managers
             _logger.LogInformation("Logging motion event for Tracker '{TrackerId}': {MotionDetected} at {Timestamp}.", trackerId, motionDetected, timestamp);
 
             await _motionRepository.AddMotionEventAsync(motionEvent);
+
+            // New Logic: Check lock state and trigger notification if necessary
+            var lockState = await _trackerRepository.FetchLockStateAsync(trackerId);
+            _logger.LogInformation("Tracker '{TrackerId}' has lock state '{LockState}'.", trackerId, lockState);
+
+            if (lockState != null && lockState.Equals("locked", StringComparison.OrdinalIgnoreCase) && motionDetected)
+            {
+                // Create a notification
+                var notification = new Notification
+                {
+                    TrackerId = trackerId,
+                    Type = "MotionDetected",
+                    Message = $"Motion detected on locked tracker {trackerId}.",
+                    Timestamp = DateTime.UtcNow
+                };
+
+                await _notificationManager.CreateNotificationAsync(notification);
+                _logger.LogInformation("Notification triggered for Tracker '{TrackerId}' due to motion detection.", trackerId);
+            }
         }
 
         /// <summary>
@@ -49,7 +76,9 @@ namespace ArgusService.Managers
         public async Task<List<Motion>> FetchMotionEventsAsync(string trackerId)
         {
             if (string.IsNullOrEmpty(trackerId))
+            {
                 throw new ArgumentException("Tracker ID cannot be null or empty.", nameof(trackerId));
+            }
 
             _logger.LogInformation("Fetching motion events for Tracker '{TrackerId}'.", trackerId);
 

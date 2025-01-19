@@ -3,37 +3,40 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ArgusService.DTOs;
-using ArgusService.Interfaces;   // ILockManager interface
+using ArgusService.Interfaces;
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
-using AutoMapper; // Add this
-using ArgusService.Models; // Ensure this is included for the Lock model
+using AutoMapper;
+using ArgusService.Models;
 
 namespace ArgusService.Controllers
 {
+    /// <summary>
+    /// Controller for managing Lock devices.
+    /// </summary>
     [ApiController]
     [Route("api/locks")]
     public class LockController : ControllerBase
     {
         private readonly ILockManager _lockManager;
         private readonly ILogger<LockController> _logger;
-        private readonly IMapper _mapper; // Inject IMapper
+        private readonly IMapper _mapper;
 
         public LockController(ILockManager lockManager, ILogger<LockController> logger, IMapper mapper)
         {
             _lockManager = lockManager;
             _logger = logger;
-            _mapper = mapper; // Assign IMapper
+            _mapper = mapper;
         }
 
         /// <summary>
         /// Registers a new Lock device to a Tracker.
-        /// Example body:
-        /// {
-        ///   "lockId": "Lock123",
-        ///   "trackerId": "Tracker999"
-        /// }
         /// </summary>
+        /// <param name="request">The Lock registration details.</param>
+        /// <returns>Result of the registration operation.</returns>
+        /// <response code="200">Lock registered successfully.</response>
+        /// <response code="400">If the input is invalid.</response>
+        /// <response code="500">If an unexpected error occurs.</response>
         [HttpPost]
         ///[Authorize(Roles = "admin")]
         public async Task<IActionResult> RegisterLock([FromBody] RegisterLockRequestDto request)
@@ -62,8 +65,12 @@ namespace ArgusService.Controllers
 
         /// <summary>
         /// Fetches all Locks attached to a specific Tracker.
-        /// GET /api/locks/trackers/{trackerId}/locks
         /// </summary>
+        /// <param name="trackerId">The ID of the Tracker.</param>
+        /// <returns>List of Locks.</returns>
+        /// <response code="200">Returns the list of Locks.</response>
+        /// <response code="400">If the input is invalid.</response>
+        /// <response code="500">If an unexpected error occurs.</response>
         [HttpGet("trackers/{trackerId}/locks")]
         //[Authorize(Roles = "admin,user")] // Uncomment if needed
         public async Task<IActionResult> GetLocksByTrackerId(string trackerId)
@@ -83,15 +90,19 @@ namespace ArgusService.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error fetching Locks for Tracker '{TrackerId}'.", trackerId);
-                return BadRequest(new { Message = ex.Message });
+                return StatusCode(500, new { Message = ex.Message });
             }
         }
 
         /// <summary>
         /// Updates the lock state of a specific Lock.
-        /// Example body:
-        /// { "lockState": "locked" }
         /// </summary>
+        /// <param name="lockId">The ID of the Lock to update.</param>
+        /// <param name="request">The new lock state.</param>
+        /// <returns>Result of the update operation.</returns>
+        /// <response code="200">Lock state updated successfully.</response>
+        /// <response code="400">If the input is invalid.</response>
+        /// <response code="500">If an unexpected error occurs.</response>
         [HttpPost("{lockId}/lock-state")]
         [Authorize(Roles = "admin,user")]
         public async Task<IActionResult> UpdateLockState(string lockId, [FromBody] UpdateLockLockStateRequestDto request)
@@ -117,8 +128,10 @@ namespace ArgusService.Controllers
 
         /// <summary>
         /// Fetches all Locks in the system.
-        /// GET /api/locks
         /// </summary>
+        /// <returns>List of all Locks.</returns>
+        /// <response code="200">Returns the list of Locks.</response>
+        /// <response code="500">If an unexpected error occurs.</response>
         [HttpGet]
         ///[Authorize(Roles = "admin")]
         public async Task<IActionResult> GetAllLocks()
@@ -138,8 +151,12 @@ namespace ArgusService.Controllers
 
         /// <summary>
         /// Fetches details of a specific Lock.
-        /// GET /api/locks/{lockId}
         /// </summary>
+        /// <param name="lockId">The ID of the Lock.</param>
+        /// <returns>The Lock details.</returns>
+        /// <response code="200">Returns the Lock details.</response>
+        /// <response code="404">If the Lock is not found.</response>
+        /// <response code="500">If an unexpected error occurs.</response>
         [HttpGet("{lockId}")]
         ///[Authorize(Roles = "admin,user")]
         public async Task<IActionResult> GetLockById(string lockId)
